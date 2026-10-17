@@ -1,0 +1,14 @@
+{
+  "name": "settleproof-interface",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:motion": "esbuild frontend/motion.js --bundle --minify --format=esm --outfile=settleproof/web/motion.js --legal-comments=eof"
+  },
+  "dependencies": {
+    "motion": "14.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
