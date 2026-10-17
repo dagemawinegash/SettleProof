@@ -39,22 +39,27 @@ def active_run(root):
 
 
 class Agent:
-    def __init__(self, settings, *, river=None, sandbox=None, metadata=None, emit=print):
+    def __init__(self, settings, *, river=None, sandbox=None, metadata=None, emit=print, on_event=None, cancelled=None):
         self.settings=settings
         self.river=river or River(settings)
         self.sandbox=sandbox or CreateOS(settings)
         self.metadata=metadata or Metadata(settings.database_url)
         self.emit=emit
+        self.on_event=on_event
+        self.cancelled=cancelled or (lambda: False)
 
-    def run(self, payments, bank, *, output=Path('artifacts'), max_attempts=3):
+    def run(self, payments, bank, *, output=Path('artifacts'), max_attempts=3, run_id=None, input_names=None):
         if not 1<=max_attempts<=3:
             raise ValueError('Attempt budget must be between 1 and 3')
         inputs=Inputs.load(payments,bank)  # Reject unsupported data before any paid/model call.
         with active_run(Path('.local')):
-            return self._run(inputs,Path(output),max_attempts)
+            return self._run(inputs,Path(output),max_attempts,run_id=run_id,input_names=input_names)
 
-    def _run(self, inputs, output, max_attempts):
-        run_id='sp-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')+'-'+uuid.uuid4().hex[:8]
+    def _run(self, inputs, output, max_attempts, *, run_id=None, input_names=None):
+        run_id=run_id or 'sp-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')+'-'+uuid.uuid4().hex[:8]
+        import re
+        if not re.fullmatch(r'sp-\d{8}T\d{6}-[a-f0-9]{8}',run_id):
+            raise ValueError('Invalid run identity')
         folder=output/run_id
         folder.mkdir(parents=True,exist_ok=False)
         (folder/'inputs').mkdir()
@@ -63,6 +68,7 @@ class Agent:
         manifest={'run_id':run_id,'started_at':now(),'status':'starting','model':self.settings.model,
                   'source_sha256':inputs.hashes,'attempts':[],'sandbox_id':None,
                   'replay_verified':False,'remote_execution':False,'metadata_persisted':False}
+        manifest['input_names']=input_names or {'payments':'payments.csv','bank':'bank.csv'}
         sandbox_id=None
 
         def event(stage, **extra):
@@ -71,6 +77,10 @@ class Agent:
                 stream.write(json.dumps(value)+'\n')
             self.emit(f'[{stage}] '+json.dumps(extra))
             write_json(folder/'run.json',manifest)
+            if self.on_event:
+                self.on_event(value)
+            if stage in ('generating','creating_sandbox','executing','checking_replay') and self.cancelled():
+                raise RunCancelled('Run cancelled at a safe execution checkpoint')
 
         try:
             self.metadata.save(manifest)
@@ -142,7 +152,7 @@ class Agent:
                     event('revision_needed',attempt=attempt,reason=feedback)
             else:
                 raise RuntimeError('No independently checked result within the attempt budget')
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, RunCancelled):
             manifest['status']='cancelled'
             event('cancelled')
             raise
@@ -175,3 +185,7 @@ class Agent:
                 event('metadata_write_failed')
             write_json(folder/'run.json',manifest)
         return folder, manifest
+
+
+class RunCancelled(RuntimeError):
+    """Cooperative cancellation; normal finally-block cleanup still runs."""

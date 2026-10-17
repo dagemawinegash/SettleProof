@@ -17,6 +17,8 @@ def main():
     parser=argparse.ArgumentParser(description='SettleProof: remote coding agent and independent CSV checker')
     sub=parser.add_subparsers(dest='command',required=True)
     sub.add_parser('doctor',help='Verify model, sandbox identity, and database access; never display secrets')
+    serve=sub.add_parser('serve',help='Start the local browser application')
+    serve.add_argument('--port',type=int,default=8000)
     run=sub.add_parser('run',help='Generate Python, execute in CreateOS, independently check, and replay')
     run.add_argument('payments',type=Path)
     run.add_argument('bank',type=Path)
@@ -30,6 +32,11 @@ def main():
     verify.add_argument('candidate',type=Path)
     args=parser.parse_args()
     try:
+        if args.command=='serve':
+            import uvicorn
+            from .server import create_app
+            uvicorn.run(create_app(),host='127.0.0.1',port=args.port,access_log=False)
+            return 0
         if args.command=='check':
             inputs=Inputs.load(args.payments,args.bank)
             report=check(json.loads(args.candidate.read_text(encoding='utf-8')),inputs)
