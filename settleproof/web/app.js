@@ -1,14 +1,19 @@
-import {$, $$, escape, money, date, icon, hydrateIcons, api, toast, showDialog} from './ui.js';
+import {$, $$, escape, money, date, icon, hydrateIcons, api, toast, showDialog, closeDialog} from './ui.js';
 import {inspectRun, exportRun} from './inspector.js';
+import {renderReview,renderReviewItems,renderReviewDetail,renderFocusedProgress} from './review-view.js';
+import {enterPage,enterList,moveFilter,animateDisclosure} from './transitions.js';
 
-const state = {view:'workspace', runs:[], run:null, report:null, selected:null, filter:'all', query:'', poll:null};
+const state = {view:'workspace', runs:[], run:null, report:null, selected:null, filter:'all', query:'', poll:null, showAllItems:false};
 
 function render() {
   $$('.nav-item[data-view]').forEach(button => {button.classList.toggle('active',button.dataset.view === state.view);button.setAttribute('aria-current',button.dataset.view === state.view ? 'page' : 'false');});
-  $('#breadcrumb-current').textContent = state.view === 'history' ? 'Run history' : 'Reconciliation';
-  $('#history-count').textContent = state.runs.length;
+  $('#breadcrumb-current').textContent = state.view === 'history' ? 'Run history' : state.report ? 'Results' : 'Compare files';
+  $('#history-count').textContent=state.runs.length;
+  const progressUpdate=!!$('#content .focus-progress');
   $('#content').innerHTML = state.view === 'history' ? historyView() : workspaceView();
-  if (state.view === 'workspace' && state.run && !state.report) $('#content').insertAdjacentHTML('beforeend',`<div class="execution-link-row"><button class="text-button" data-action="inspector">${icon('code')}Inspect execution evidence ${icon('arrow')}</button></div>`);
+  if (state.view==='workspace'&&state.run&&!state.report) $('#content').insertAdjacentHTML('beforeend',`<div class="execution-link-row"><button class="text-button" data-action="inspector">How is this being checked? ${icon('arrow')}</button></div>`);
+  enterPage($('#content'),progressUpdate&&!!$('#content .focus-progress'));
+  requestAnimationFrame(()=>{const tab=$(`[data-filter="${state.filter}"]`);if(tab) moveFilter(tab);});
 }
 
 function workspaceView() {
@@ -32,14 +37,14 @@ async function loadHistory() {
 async function openRun(runId) {
   state.run = await api('/runs/' + encodeURIComponent(runId));
   state.report = state.run.report_available ? await api('/runs/' + encodeURIComponent(runId) + '/report') : null;
-  state.selected = null;state.filter = 'all';state.query = '';
+  state.selected=null;state.filter=state.report?.summary.unresolved_items ? 'review' : 'matched';state.query='';state.showAllItems=false;
   state.view = 'workspace';
   render();
 }
 
 document.addEventListener('click', async event => {
   const close = event.target.closest('[data-close]');
-  if (close) {close.closest('dialog').close();return;}
+  if (close) {closeDialog(close.closest('dialog'));return;}
   const navigation = event.target.closest('[data-view]');
   if (navigation) {state.view = navigation.dataset.view;render();return;}
   const run = event.target.closest('[data-run]');
@@ -47,6 +52,8 @@ document.addEventListener('click', async event => {
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'guide') showDialog('#guide-dialog');
   if (action === 'new') showNewRun();
+  if (action==='find-item') {$('#review-find').hidden=!$('#review-find').hidden;if (!$('#review-find').hidden) $('#ledger-search').focus();}
+  if (action==='more-results') {state.showAllItems=!state.showAllItems;updateLedger();$('[data-action="more-results"]')?.focus();}
   if (action === 'inspector' && state.run) inspectRun(state.run);
   if (action === 'exports' && state.run?.report_available) exportRun(state.run);
   if (action === 'refresh') {try {await loadHistory();render();} catch(error) {toast(error.message,true);}}
@@ -142,16 +149,7 @@ async function startRun() {
 
 const stageLabels = {inputs_validated:'Source files validated',generating:'Writing comparison code',creating_sandbox:'Preparing the isolated runtime',sandbox_ready:'CreateOS sandbox ready',executing:'Executing generated Python',revision_needed:'Independent checker requested a revision',checking_replay:'Replaying the checked program',checked:'Report checked against source records',sandbox_deleted:'Sandbox cleanup completed',cleanup_required:'Sandbox cleanup needs attention',failed:'Run stopped',cancelled:'Cancellation accepted',metadata_write_failed:'History could not be saved'};
 const activeStatuses = ['running','cancelling'];
-function progressView() {
-  const run = state.run, active = activeStatuses.includes(run.status), failed = ['failed','interrupted','cancelled'].includes(run.status);
-  const latest = run.events?.at(-1), stage = latest?.stage;
-  const title = run.status === 'cancelling' ? 'Stopping at a safe checkpoint.' : active ? 'Following the paper trail.' : run.status === 'checked' ? 'The comparison is checked.' : run.status === 'cancelled' ? 'This run was cancelled.' : 'This run needs another look.';
-  const subtitle = active ? 'The agent is writing and testing real code. Every accepted result must pass an independent check.' : failed ? 'There is no accepted report for this run. Its execution evidence is preserved.' : 'The generated program and its replay agree with the original sources.';
-  const steps = [{label:'Validate sources',events:['inputs_validated']},{label:'Write & execute',events:['generating','creating_sandbox','sandbox_ready','executing','revision_needed']},{label:'Check & replay',events:['checking_replay','checked']},{label:'Save & clean up',events:['sandbox_deleted']}];
-  let current = steps.findIndex(s => s.events.includes(stage));
-  if (current < 0) current = active ? 1 : failed ? -1 : 3;
-  return `<div class="page-heading"><div><span class="eyebrow">${active ? 'RECONCILIATION IN PROGRESS' : 'EXECUTION RECORD'}</span><h1>${title}</h1><p class="page-description">${subtitle}</p></div>${active ? `<button class="button" data-action="cancel" ${run.status === 'cancelling' ? 'disabled' : ''}>${icon('close')}${run.status === 'cancelling' ? 'Cancellation requested' : 'Cancel run'}</button>` : '<button class="button" data-action="new">Try another run</button>'}</div><div class="run-file-line">${icon('file')}<span>${escape(run.input_names?.payments || 'payments.csv')}</span><span class="muted">+</span>${icon('bank')}<span>${escape(run.input_names?.bank || 'bank.csv')}</span><span class="mono">${escape(run.run_id.slice(-8))}</span></div><section class="panel progress-panel"><div class="progress-heading"><span class="${active ? 'spinner' : 'progress-result'}">${active ? '' : icon(failed ? 'alert' : 'check')}</span><div><h2>${active ? escape(stageLabels[stage] || 'Starting the controller') : run.status === 'checked' ? 'Independent checks passed' : escape(run.status)}</h2><p>${run.status === 'cancelling' ? 'The current model or execution request may finish first. The controller then stops and cleans up.' : active ? 'Live controller events · no simulated progress' : escape(run.error || 'The original files and execution record are preserved.')}</p></div><span class="pill ${failed ? 'amber' : 'green'}">${active ? 'Live run' : escape(run.status)}</span></div><div class="run-steps">${steps.map((step,index) => `<div class="run-step ${index < current || (!active && !failed) ? 'complete' : index === current ? 'current' : ''}"><span>${index < current || (!active && !failed) ? icon('check') : '0'+(index+1)}</span><strong>${step.label}</strong></div>`).join('')}</div><div class="event-list" aria-live="polite">${(run.events || []).map(event => `<div class="event-row ${event.stage === 'revision_needed' ? 'revision' : ''}"><span class="event-dot"></span><time>${new Date(event.time).toLocaleTimeString('en-US',{hour12:false})}</time><span>${escape(stageLabels[event.stage] || event.stage)}${event.attempt ? `<small>Attempt ${event.attempt}</small>` : ''}</span>${event.stage === 'revision_needed' ? `<p>${escape(event.reason)}</p>` : ''}</div>`).join('') || '<div class="empty-state">The controller is accepting this run…</div>'}</div></section><div class="run-bottom-note">${icon('lock')}Generated code runs in CreateOS. API keys remain in the trusted controller.</div>`;
-}
+function progressView() {return renderFocusedProgress(state.run,stageLabels);}
 
 function pollRun(runId) {
   clearTimeout(state.poll);
@@ -162,9 +160,11 @@ function pollRun(runId) {
       const run = await api('/runs/' + encodeURIComponent(runId));
       failures = 0;
       if (state.run?.run_id === runId) {
-        state.run = run;
+        const signature=JSON.stringify([run.status,run.events?.length,run.events?.at(-1)?.stage]);
+        const changed=signature!==state.progressSignature;state.progressSignature=signature;
+        state.run=run;
         if (run.report_available) state.report = await api('/runs/' + encodeURIComponent(runId) + '/report');
-        if (state.view === 'workspace') render();
+        if(state.view==='workspace'&&changed) {if(run.report_available) state.filter=run.summary?.unresolved_items ? 'review' : 'matched';render();}
       }
       if (!activeStatuses.includes(run.status)) {
         state.activeRunId = null;
@@ -207,13 +207,6 @@ async function init() {
 }
 init();
 
-const statusInfo = {
-  matched:{label:'Matched',tone:'green'},discrepancy:{label:'Difference',tone:'red'},
-  missing_deposit:{label:'Not deposited',tone:'amber'},ambiguous:{label:'Ambiguous',tone:'amber'},
-  unmatched_deposit:{label:'Bank only',tone:''},unreferenced:{label:'No reference',tone:''}
-};
-const badge = status => `<span class="pill ${statusInfo[status]?.tone || ''}"><span class="badge-dot"></span>${escape(statusInfo[status]?.label || status)}</span>`;
-
 function reportItems() {
   const report = state.report;
   if (!report) return [];
@@ -231,17 +224,7 @@ function reportItems() {
   return items.sort((a,b) => priority[a.status] - priority[b.status] || a.label.localeCompare(b.label));
 }
 
-function reportView() {
-  const run = state.run, summary = state.report.summary, items = reportItems();
-  if (!items.some(item => item.key === state.selected)) state.selected = items[0]?.key;
-  const total = summary.payment_records + summary.bank_records;
-  return `<div class="page-heading report-heading"><div><span class="eyebrow">RECONCILIATION REPORT <span class="eyebrow-divider">/</span> ${escape(run.run_id.slice(-8).toUpperCase())}${run.data_kind === 'synthetic_sample' ? '<span class="sample-badge">Synthetic sample</span>' : ''}</span><div class="heading-title"><h1>Every payout, accounted for.</h1><span class="pill green">${icon('shield')}Source checks passed</span></div><p class="page-description">${escape(run.input_names?.payments || 'payments.csv')}<span class="source-plus">+</span>${escape(run.input_names?.bank || 'bank.csv')}<span class="source-plus">·</span>${date(run.started_at)}</p></div><button class="button" data-action="exports">${icon('download')}Export report ${icon('down')}</button></div>
-  <section class="summary-grid" aria-label="Reconciliation totals"><article class="summary-card"><div class="summary-label">Expected net payouts ${icon('ledger')}</div><div class="summary-number">${money(summary.expected_minor)}</div><p>After ${money(summary.fee_minor)} in documented fees</p></article><article class="summary-card"><div class="summary-label">Bank deposits ${icon('bank')}</div><div class="summary-number">${money(summary.bank_minor)}</div><p>${summary.bank_records} source records · USD</p></article><article class="summary-card difference-card"><div class="summary-label">Net difference <span class="pill amber">${summary.unresolved_items} to review</span></div><div class="summary-number ${summary.difference_minor === 0 ? '' : 'difference-number'}">${money(summary.difference_minor)}</div><p>${summary.unresolved_items ? 'An investigation starting point, not proven loss' : 'Both files balance under the supported rules'}</p></article></section>
-  <div class="proof-strip"><span>${icon('shield')}<strong>${total}/${total} source rows accounted for</strong></span><span>${icon('check')}Exact amounts</span><span>${icon('check')}References checked</span><span>${icon(run.replay_verified ? 'replay' : 'clock')}${run.replay_verified ? 'Replay verified' : 'Replay not verified'}</span><button class="text-button" data-action="inspector">View execution ${icon('arrow')}</button></div>
-  <div class="report-toolbar"><div class="report-tabs"><button class="active" data-action="ledger-tab">Reconciliation</button><button data-action="inspector">Execution evidence ${icon('code')}</button></div><span class="report-count">${summary.payment_records} payment rows <span>↔</span> ${summary.bank_records} bank rows</span></div>
-  <div class="investigation-grid"><section class="panel ledger-panel" aria-label="Settlement ledger"><div class="ledger-heading"><div><h2>Settlement ledger</h2><p>Follow a payout to its original records.</p></div><span class="ledger-group-count">${state.report.groups.length} payout groups</span></div><div class="ledger-filters"><div class="filter-tabs">${[['all','All',items.length],['review','Needs review',items.filter(i => i.status !== 'matched').length],['matched','Matched',items.filter(i => i.status === 'matched').length]].map(([key,label,count]) => `<button data-filter="${key}" class="${state.filter === key ? 'active' : ''}">${label}<span>${count}</span></button>`).join('')}</div><label class="search-box">${icon('search')}<input id="ledger-search" type="search" placeholder="Find a payout or source row…" value="${escape(state.query)}" aria-label="Search payouts or source rows"><kbd>/</kbd></label></div><div class="ledger-scroll"><div class="ledger-columns" aria-hidden="true"><span>Payout reference</span><span>Status</span><span>Expected</span><span>Received</span><span>Difference</span><span></span></div><div id="ledger-body">${ledgerRows()}</div></div><div class="ledger-footnote">${icon('lock')}Matched by shared payout reference. Amounts alone never establish a match.</div></section><aside id="evidence-panel" class="panel evidence-panel" aria-label="Selected payout evidence">${evidenceView()}</aside></div>
-  <div class="interpretation-note">${icon('help')}<p>Open items need a closer look. Timing, missing exports, or split deposits can explain differences. Originals are never adjusted to force a match.</p></div>`;
-}
+function reportView() {return renderReview(state,reportItems(),filteredItems());}
 
 function filteredItems() {
   const query = state.query.toLowerCase();
@@ -249,54 +232,51 @@ function filteredItems() {
     (!query || JSON.stringify([item.label,item.status,item.payment_rows,item.bank_rows,item.evidence,money(item.expected_minor),money(item.bank_minor)]).toLowerCase().includes(query)));
 }
 
-function ledgerRows() {
-  const items = filteredItems();
-  return items.map(item => `<button class="ledger-row ${item.key === state.selected ? 'selected' : ''}" data-select="${escape(item.key)}" aria-pressed="${item.key === state.selected}"><span class="payout-name" title="${escape(item.label)}"><strong>${escape(item.label)}</strong><small>${item.status === 'unreferenced' ? 'No payout reference' : item.payment_rows.length + ' payment ' + (item.payment_rows.length === 1 ? 'row' : 'rows') + ' · ' + item.bank_rows.length + ' bank'}</small></span><span>${badge(item.status)}</span><span class="amount">${money(item.expected_minor)}</span><span class="amount">${item.bank_rows.length ? money(item.bank_minor) : '—'}</span><span class="amount ${item.status !== 'matched' && item.difference_minor !== 0 ? 'amount-review' : item.status === 'matched' ? 'amount-matched' : ''}">${money(item.difference_minor)}</span>${icon('chevron')}</button>`).join('') || `<div class="empty-state">No records match this view.<br><button class="text-button" data-action="reset-filter">Clear filters ${icon('arrow')}</button></div>`;
+function ledgerRows() {return renderReviewItems(filteredItems(),{expanded:state.showAllItems||!!state.query});}
+
+function openDetail(key) {
+  const item=reportItems().find(item=>item.key===key);
+  if (!item) return;
+  state.selected=key;
+  let dialog=$('#detail-dialog');
+  if (!dialog) {dialog=document.createElement('dialog');dialog.id='detail-dialog';dialog.className='modal detail-drawer';dialog.setAttribute('aria-labelledby','detail-title');document.body.append(dialog);}
+  dialog.innerHTML=renderReviewDetail(item);
+  showDialog(dialog);
+  dialog.scrollTop=0;
 }
 
-function evidenceView() {
-  const item = reportItems().find(item => item.key === state.selected);
-  if (!item) return '<div class="empty-state">Choose a payout to inspect its evidence.</div>';
-  const explanation = {
-    matched:['The payout matches.','The referenced bank record equals the net amount supported by the payment rows.'],
-    discrepancy:['A difference to investigate.',`The referenced bank record is ${money(Math.abs(item.difference_minor))} ${item.difference_minor < 0 ? 'below' : 'above'} the expected net amount. No extra adjustments were assumed.`],
-    missing_deposit:['No bank record in this export.','The payment activity has a payout reference, but the bank file has no corresponding record. Check settlement timing and export completeness.'],
-    ambiguous:['Several records. One reference.','Multiple bank records carry this payout reference. Split deposits are unsupported, so the group stays ambiguous even if its total balances.'],
-    unmatched_deposit:['A deposit without payment evidence.','This reference appears only in the bank file. Check whether the payment export is complete and uses the same references.'],
-    unreferenced:['This row needs a payout reference.','Equal amounts are not enough to connect records. This row remains unassigned until a supported reference is available.']
-  }[item.status];
-  return `<div class="evidence-heading"><span class="eyebrow">SOURCE EVIDENCE</span><h2>${escape(item.label)}</h2>${badge(item.status)}</div><div class="evidence-reason ${item.status === 'matched' ? 'reason-matched' : ''}"><span class="reason-symbol">${icon(item.status === 'matched' ? 'check' : 'search')}</span><div><strong>${explanation[0]}</strong><p>${escape(explanation[1])}</p></div></div><div class="evidence-calculation"><div><span>Payment activity <small>charges less refunds</small></span><strong>${money(item.gross_minor)}</strong></div><div><span>Documented fees</span><strong>${item.fee_minor ? '−' : ''}${money(item.fee_minor)}</strong></div><div class="expected-total"><span>Expected net payout</span><strong>${money(item.expected_minor)}</strong></div><div><span>Bank deposits <small>${item.bank_rows.length} referenced ${item.bank_rows.length === 1 ? 'record' : 'records'}</small></span><strong>${item.bank_rows.length ? money(item.bank_minor) : '—'}</strong></div><div class="calculation-total ${item.status === 'matched' ? 'matched-total' : ''}"><span>${item.status === 'matched' ? 'Difference · balanced' : 'Difference · investigate'}</span><strong>${money(item.difference_minor)}</strong></div></div><div class="source-evidence"><div class="source-section-title"><span>${icon('file')}Payment records</span><span>${item.evidence.payments.length}</span></div>${item.evidence.payments.length ? item.evidence.payments.map(row => sourceRecord(row,'payments')).join('') : '<p class="no-source">No payment rows carry this reference.</p>'}<div class="source-section-title bank-source-title"><span>${icon('bank')}Bank records</span><span>${item.evidence.bank.length}</span></div>${item.evidence.bank.length ? item.evidence.bank.map(row => sourceRecord(row,'bank')).join('') : '<p class="no-source">No bank row carries this reference.</p>'}</div><div class="evidence-footer">${icon('lock')}Original source values. Expand a record to inspect every field.</div>`;
+
+
+
+function updateLedger(animate=true) {
+  $('#ledger-body').innerHTML=ledgerRows();
+  $$('[data-filter]').forEach(button=>{button.classList.toggle('active',button.dataset.filter===state.filter);button.setAttribute('aria-selected',String(button.dataset.filter===state.filter));});
+  if (animate) enterList($('#ledger-body'));
+  const tab=$(`[data-filter="${state.filter}"]`);
+  if (tab) moveFilter(tab);
 }
 
-function sourceRecord(row, kind) {
-  const source = row.source;
-  const identity = source.payment_id || source.transaction_reference || source.deposit_id || source.bank_transaction_id || row.row_id;
-  const label = kind === 'payments' ? 'net' : 'deposit';
-  return `<details class="source-record"><summary><span class="source-row-id">${escape(row.row_id)}</span><span class="source-identity"><strong title="${escape(identity)}">${escape(identity)}</strong><small>CSV record ${row.record}</small></span><span class="source-amount">${money(row.net_minor)}<small>${label}</small></span>${icon('down')}</summary><div class="raw-record">${Object.entries(source).map(([key,value]) => `<div><span>${escape(key)}</span><code>${escape(value) || '<i>empty</i>'}</code></div>`).join('')}</div></details>`;
-}
-
-function updateLedger() {
-  const visible = filteredItems();
-  if (!visible.some(item => item.key === state.selected)) state.selected = visible[0]?.key || null;
-  $('#ledger-body').innerHTML = ledgerRows();
-  $('#evidence-panel').innerHTML = evidenceView();
-  $$('[data-filter]').forEach(button => button.classList.toggle('active',button.dataset.filter === state.filter));
-}
 
 document.addEventListener('click',event => {
   const selected = event.target.closest('[data-select]');
-  if (selected) {state.selected = selected.dataset.select;updateLedger();if (matchMedia('(max-width:1120px)').matches) $('#evidence-panel').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches ? 'instant' : 'smooth',block:'start'});}
+  if (selected) {openDetail(selected.dataset.select);}
   const filter = event.target.closest('[data-filter]');
-  if (filter) {state.filter = filter.dataset.filter;updateLedger();}
-  if (event.target.closest('[data-action="reset-filter"]')) {state.filter = 'all';state.query = '';$('#ledger-search').value = '';updateLedger();}
+  if (filter) {state.filter=filter.dataset.filter;state.showAllItems=false;updateLedger();}
+  if (event.target.closest('[data-action="reset-filter"]')) {state.query='';$('#ledger-search').value='';updateLedger();}
 });
-document.addEventListener('input',event => {if (event.target.id === 'ledger-search') {state.query = event.target.value;updateLedger();}});
+document.addEventListener('input',event => {if (event.target.id === 'ledger-search') {state.query=event.target.value;updateLedger(false);}});
 document.addEventListener('keydown',event => {
-  if (event.key === '/' && !event.target.closest('input,textarea,select,dialog') && $('#ledger-search')) {event.preventDefault();$('#ledger-search').focus();}
+  if (event.key === '/' && !event.target.closest('input,textarea,select,dialog') && $('#ledger-search')) {event.preventDefault();$('#review-find').hidden=false;$('#ledger-search').focus();}
   const row = event.target.closest('[data-select]');
   if (row && ['ArrowDown','ArrowUp'].includes(event.key)) {
-    event.preventDefault();const items = filteredItems();const index = items.findIndex(item => item.key === row.dataset.select);
-    state.selected = items[Math.max(0,Math.min(items.length-1,index+(event.key === 'ArrowDown' ? 1 : -1)))]?.key;
-    updateLedger();$(`[data-select="${state.selected}"]`)?.focus();
+    event.preventDefault();const rows=$$('[data-select]',$('#ledger-body')),index=rows.indexOf(row);
+    rows[Math.max(0,Math.min(rows.length-1,index+(event.key==='ArrowDown' ? 1 : -1)))]?.focus();
+  }
+  const tab=event.target.closest('[data-filter]');
+  if (tab&&['ArrowLeft','ArrowRight'].includes(event.key)) {
+    event.preventDefault();const tabs=$$('[data-filter]'), index=tabs.indexOf(tab);
+    const next=tabs[(index+(event.key==='ArrowRight' ? 1 : -1)+tabs.length)%tabs.length];next.click();next.focus();
   }
 });
+
+document.addEventListener('toggle',event=>{if(event.target.matches('details')) animateDisclosure(event.target);},true);

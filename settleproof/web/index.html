@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/static/report.css">
   <link rel="stylesheet" href="/static/inspector.css">
   <link rel="stylesheet" href="/static/polish.css">
+  <link rel="stylesheet" href="/static/focus.css">
   <script type="module" src="/static/app.js"></script>
 </head>
 <body>
@@ -20,7 +21,7 @@
     <div class="workspace-label"><span class="workspace-avatar">S</span><div>Personal workspace<small>Local development</small></div><span class="workspace-chevron">⌄</span></div>
     <p class="nav-label">WORKSPACE</p>
     <nav>
-      <button class="nav-item active" data-view="workspace"><span data-icon="ledger"></span>Reconciliation</button>
+      <button class="nav-item active" data-view="workspace"><span data-icon="ledger"></span>Overview</button>
       <button class="nav-item" data-view="history"><span data-icon="history"></span>Run history<span class="nav-count" id="history-count">0</span></button>
     </nav>
     <div class="sidebar-note"><span class="note-line"></span><p>Clarity in every<br>transaction.</p><small>A paper trail you can follow.</small></div>
@@ -30,7 +31,7 @@
     </div>
   </aside>
   <div class="app-main">
-    <header class="topbar"><div class="breadcrumb"><span data-icon="layers"></span><span>Workspace</span><span class="breadcrumb-slash">/</span><strong id="breadcrumb-current">Reconciliation</strong></div><div class="topbar-actions"><span class="currency-label">USD workspace</span><button class="button primary" data-action="new"><span data-icon="plus"></span>New reconciliation<span class="keyboard-hint">N</span></button></div></header>
+    <header class="topbar"><div class="breadcrumb"><span data-icon="layers"></span><span>Workspace</span><span class="breadcrumb-slash">/</span><strong id="breadcrumb-current">Overview</strong></div><div class="topbar-actions"><button class="button primary" data-action="new"><span data-icon="plus"></span>Compare files<span class="keyboard-hint">N</span></button></div></header>
     <main id="main" tabindex="-1"><div id="content"><div class="loading-state"><span class="spinner"></span><p>Opening your workspace…</p></div></div></main>
     <footer class="app-footer"><span>Every number has a source.</span><span>SettleProof <span class="footer-divider">/</span> Independently checked reconciliation</span></footer>
   </div>

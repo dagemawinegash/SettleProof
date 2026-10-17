@@ -11,6 +11,7 @@ const paths = {
  close:'<path d="m6 6 12 12M6 18 18 6"/>',
  arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>',
  down:'<path d="m6 9 6 6 6-6"/>',
+ up:'<path d="m6 15 6-6 6 6"/>',
  check:'<path d="m5 12 4 4L19 6"/>',
  shield:'<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/>',
  help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .7-1.5 1-1.5 2M12 16h.01"/>',
@@ -46,5 +47,25 @@ export function toast(message, error = false) {
   clearTimeout(element.timer);
   element.timer = setTimeout(() => {element.hidden = true;}, 6500);
 }
-export function showDialog(id) { $(id).showModal(); }
-export function closeDialog(id) { $(id).close(); }
+export function showDialog(id) {
+  const dialog = typeof id === 'string' ? $(id) : id;
+  if (dialog.open) return;
+  dialog.style.opacity='';dialog.style.transform='';
+  dialog.showModal();openModal(dialog);
+  if (!dialog.motionEvents) {
+    dialog.motionEvents=true;
+    dialog.addEventListener('cancel',event => {event.preventDefault();closeDialog(dialog);});
+    dialog.addEventListener('click',event => {
+      if (event.target !== dialog) return;
+      const box=dialog.getBoundingClientRect();
+      if (event.clientX<box.left || event.clientX>box.right || event.clientY<box.top || event.clientY>box.bottom) closeDialog(dialog);
+    });
+  }
+}
+export async function closeDialog(id) {
+  const dialog = typeof id === 'string' ? $(id) : id;
+  if (!dialog?.open || dialog.closing) return;
+  dialog.closing=true;
+  try {await leaveModal(dialog);} finally {dialog.close();dialog.closing=false;dialog.classList.remove('is-closing');dialog.style.opacity='';dialog.style.transform='';}
+}
+import {openModal, leaveModal} from './transitions.js';
