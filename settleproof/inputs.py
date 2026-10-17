@@ -11,6 +11,13 @@ MAX_BYTES = 256_000
 MAX_ROWS = 200
 PAYMENT_COLUMNS = {'payment_id','payout_id','kind','amount','fee','currency'}
 BANK_COLUMNS = {'deposit_id','payout_id','amount','currency'}
+PAYMENT_PROFILES = {
+    'standard':{key:key for key in PAYMENT_COLUMNS},
+    'renamed':{'payment_id':'transaction_reference','payout_id':'settlement_reference','kind':'transaction_type',
+               'amount':'gross_amount','fee':'processing_fee','currency':'currency_code'}}
+BANK_PROFILES = {
+    'standard':{key:key for key in BANK_COLUMNS},
+    'renamed':{'deposit_id':'bank_transaction_id','payout_id':'settlement_reference','amount':'net_amount','currency':'currency_code'}}
 MONEY = re.compile(r'-?(?:0|[1-9]\d{0,10})(?:\.\d{1,2})?\Z')
 
 
@@ -53,6 +60,16 @@ class Inputs:
         return {'payments':hashlib.sha256(self.payment_bytes).hexdigest(),
                 'bank':hashlib.sha256(self.bank_bytes).hexdigest()}
 
+    @property
+    def column_maps(self):
+        return {'payments':_profile(self.payments[0].source,True)[1],
+                'bank':_profile(self.bank[0].source,False)[1]}
+
+    @property
+    def profiles(self):
+        return {'payments':_profile(self.payments[0].source,True)[0],
+                'bank':_profile(self.bank[0].source,False)[0]}
+
     @classmethod
     def load(cls, payments, bank):
         return cls.from_bytes(Path(payments).read_bytes(), Path(bank).read_bytes())
@@ -60,6 +77,13 @@ class Inputs:
     @classmethod
     def from_bytes(cls, payment_bytes, bank_bytes):
         return cls(_parse(payment_bytes, True), _parse(bank_bytes, False), payment_bytes, bank_bytes)
+
+
+def _profile(columns, payment):
+    for name,mapping in (PAYMENT_PROFILES if payment else BANK_PROFILES).items():
+        if set(columns)==set(mapping.values()):
+            return name,mapping
+    return None,None
 
 
 def _parse(data, payment):
@@ -73,8 +97,9 @@ def _parse(data, payment):
     try:
         reader = csv.DictReader(io.StringIO(text, newline=''), strict=True)
         columns = PAYMENT_COLUMNS if payment else BANK_COLUMNS
-        if not reader.fieldnames or len(reader.fieldnames)!=len(set(reader.fieldnames)) or set(reader.fieldnames)!=columns:
-            raise InputError(f'{label}: required columns are {", ".join(sorted(columns))}; no duplicate or extra columns')
+        profile,mapping=_profile(reader.fieldnames or [],payment)
+        if not reader.fieldnames or len(reader.fieldnames)!=len(set(reader.fieldnames)) or not profile:
+            raise InputError(f'{label}: use the exact standard or renamed CSV profile. Standard columns: {", ".join(sorted(columns))}; no duplicate or extra columns')
         parsed, seen = [], set()
         for i, row in enumerate(reader, 1):
             if i > MAX_ROWS:
@@ -83,7 +108,8 @@ def _parse(data, payment):
                 raise InputError(f'{label}: malformed record {i}')
             if any(len(v)>200 or '\x00' in v for v in row.values()):
                 raise InputError(f'{label}: oversized or invalid field at record {i}')
-            row = {k:v.strip() for k,v in row.items()}
+            source = {k:v.strip() for k,v in row.items()}
+            row = {key:source[column] for key,column in mapping.items()}
             identity = row['payment_id' if payment else 'deposit_id']
             if not identity or identity in seen:
                 raise InputError(f'{label}: empty or duplicate record identifier at record {i}')
@@ -98,7 +124,7 @@ def _parse(data, payment):
                 if row['kind']=='refund' and fee!=0:
                     raise InputError(f'{label}: refund fees are unsupported; fee must be 0')
                 amount *= 1 if row['kind']=='charge' else -1
-            parsed.append(Row(('P' if payment else 'B')+f'{i:06}', i, row,
+            parsed.append(Row(('P' if payment else 'B')+f'{i:06}', i, source,
                               row['payout_id'], amount, fee, amount-fee))
         if not parsed:
             raise InputError(f'{label}: at least one data record is required')

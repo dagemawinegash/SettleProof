@@ -10,6 +10,12 @@ Use Decimal or exact integer minor units; never use float for money.
 Supported profile (headers can be in any order):
 payments: payment_id,payout_id,kind,amount,fee,currency
 bank: deposit_id,payout_id,amount,currency
+The user context provides column_maps, mapping these semantic field names to ACTUAL CSV header names.
+IMPORTANT: Read the ACTUAL header names from those mappings. For example payment_id may be
+transaction_reference, payout_id may be settlement_reference, kind may be transaction_type,
+amount may be gross_amount (payments) or net_amount (bank), fee may be processing_fee,
+and currency may be currency_code. Implement the mappings in your generated program.
+The semantics and result format below remain identical for both declared profiles.
 Values are stripped. Currency USD only. Amounts are decimal dollars with at most 2 fractional digits.
 Payment amount and fee are nonnegative magnitudes. kind=charge => positive gross; kind=refund => negative gross.
 Refund fee is always 0. Expected payment net = signed gross - documented fee.

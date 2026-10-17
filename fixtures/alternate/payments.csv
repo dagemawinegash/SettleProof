@@ -1,0 +1,8 @@
+currency_code,transaction_reference,gross_amount,settlement_reference,processing_fee,transaction_type
+USD,ch_001,120.00,po_clear,3.60,charge
+USD,ch_002,80.00,po_clear,2.40,charge
+USD,re_001,20.00,po_clear,0.00,refund
+USD,ch_003,150.00,po_short,4.50,charge
+USD,ch_004,60.00,po_pending,1.80,charge
+USD,ch_005,100.00,po_split,3.00,charge
+USD,ch_006,40.00,,0.00,charge

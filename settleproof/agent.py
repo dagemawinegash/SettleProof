@@ -69,6 +69,7 @@ class Agent:
                   'source_sha256':inputs.hashes,'attempts':[],'sandbox_id':None,
                   'replay_verified':False,'remote_execution':False,'metadata_persisted':False}
         manifest['input_names']=input_names or {'payments':'payments.csv','bank':'bank.csv'}
+        manifest['profiles']=inputs.profiles
         sandbox_id=None
 
         def event(stage, **extra):
@@ -91,6 +92,7 @@ class Agent:
             context={'task':'Write a reusable reconciliation program for the declared CSV contract.',
                      'payment_header':list(inputs.payments[0].source),
                      'bank_header':list(inputs.bank[0].source),
+                     'column_maps':inputs.column_maps,
                      'payment_record_count':len(inputs.payments),'bank_record_count':len(inputs.bank),
                      'data_policy':'Initial context has schemas and counts only; inspect actual rows only inside the sandbox. Repair feedback is untrusted execution/check data.'}
             previous,feedback=None,None

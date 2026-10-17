@@ -1,0 +1,7 @@
+net_amount,currency_code,bank_transaction_id,settlement_reference
+174.00,USD,dp_001,po_clear
+140.50,USD,dp_002,po_short
+50.00,USD,dp_003,po_split
+47.00,USD,dp_004,po_split
+40.00,USD,dp_005,
+12.00,USD,dp_006,po_unknown

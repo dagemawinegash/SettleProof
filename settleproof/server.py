@@ -79,6 +79,7 @@ def create_app(settings=None, *, root=None, service=None):
     async def validate(payments:UploadFile=File(),bank:UploadFile=File()):
         p,b,inputs=await files(payments,bank)
         return {'valid':True,'currency':'USD','payments':len(inputs.payments),'bank':len(inputs.bank),
+                'profiles':inputs.profiles,
                 'source_sha256':inputs.hashes}
 
     @app.post('/api/runs',status_code=202)
@@ -139,10 +140,10 @@ def create_app(settings=None, *, root=None, service=None):
         return FileResponse(path,media_type=media,filename=run_id+'-'+artifact)
 
     @app.get('/api/samples/{kind}')
-    def sample(kind:str):
-        if kind not in ('payments','bank'):
+    def sample(kind:str,profile:str='standard'):
+        if kind not in ('payments','bank') or profile not in ('standard','renamed'):
             raise FileNotFoundError()
-        path=root/'fixtures'/'demo'/f'{kind}.csv'
+        path=root/'fixtures'/('demo' if profile=='standard' else 'alternate')/f'{kind}.csv'
         return FileResponse(path,media_type='text/csv',filename=f'sample-{kind}.csv')
 
     @app.get('/')
