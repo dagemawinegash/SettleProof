@@ -29,3 +29,11 @@ Artifacts and browser screenshots stay in ignored local storage, not the public 
 55 tests pass. New coverage includes browser request-origin boundaries, bounded uploads, invalid-currency rejection, artifact allowlists, rejected/stale report export prevention, restart persistence, remote-only history availability, cooperative cancellation cleanup, and both explicit CSV profiles. JavaScript syntax and Git whitespace checks also pass.
 
 These checks cover the intended local prototype. They are not a public deployment, an exhaustive security audit, or proof that an arbitrary future generated program will pass. Every real run still goes through independent checking and a bounded attempt budget.
+
+## Simplified interface revision
+
+The subsequent interface revision replaces the dense ledger and permanently visible evidence panel with three plain-English issue cards, optional additional cards, collapsed totals, and a detail drawer. Original source rows, calculations, execution evidence, and downloads remain available on request. Motion is bundled locally for entry, list, category, and dialog transitions.
+
+Browser checks against the existing checked standard-profile report confirmed the $5 discrepancy, missing references, $174 matched payout and refund evidence, search/filter behavior, preserved search after history navigation, keyboard focus restoration, code inspection, CSV download, sample validation, and malformed-file rejection. Desktop (1512px) and phone (390px) had no page-level horizontal overflow or JavaScript errors. A live drawer animation was observed; a separate reduced-motion browser context had zero running animations, including the dialog backdrop.
+
+Browser-only test doubles verified the active progress layout, unchanged polling preserving the rendered view, and the fully matched default category. These checks started no new inference calls or CreateOS sandboxes. The existing 55 automated tests passed again after this revision. Updated screenshots are kept privately under `.local/browser/simple-*.png`.

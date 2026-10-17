@@ -15,18 +15,27 @@ From the repository root in WSL:
 
 Open **http://127.0.0.1:8000**. In the existing development workspace the web dependencies are already installed. PowerShell users can run `.\.venv-win\Scripts\python.exe -m settleproof serve` instead. Add `--port 8001` if port 8000 is occupied.
 
-Choose **New reconciliation**, select your two supported CSVs, or **Load samples** for synthetic data. Standard and renamed-column samples are available. Loading samples only validates the files; **Reconcile files** starts real River inference and CreateOS execution.
+Choose **Compare files**, select your two supported CSVs, or **Load samples** for synthetic data. Standard and renamed-column samples are available. Loading samples only validates the files; **Reconcile files** starts real River inference and CreateOS execution.
 
 The workspace provides:
 
 - Actual controller progress, revision feedback, and cancellation at a safe checkpoint.
-- Checked totals and a searchable ledger with needs-review/matched filters.
-- A payout detail panel with exact fee/refund arithmetic and expandable original CSV fields.
-- **Execution evidence** showing actual generated programs, checker decisions, execution status, and token usage.
-- **Export report** downloads for CSV/JSON reports, accepted Python, and the original input files.
+- Plain-English issues with **Needs checking** and **Matched** categories. Three items appear initially; more are available on request.
+- One item at a time in a detail drawer, with an explanation and suggested next check. Exact fee/refund arithmetic and original CSV fields expand on request.
+- Collapsed file totals and **How was this checked?** for actual generated programs, checker decisions, execution status, and token usage.
+- **Download** for CSV/JSON reports, accepted Python, and the original input files.
 - **Run history** backed by Neon metadata, with local artifact availability shown. Completed runs survive a server restart.
 
-The latest locally available checked run opens automatically. Synthetic samples are explicitly labeled. On smaller screens the evidence panel sits below the ledger; selecting a record scrolls to its evidence. The ledger scrolls horizontally when needed. Keyboard shortcuts: `N` opens file import, `/` focuses search, and arrow keys navigate focused ledger rows.
+The latest locally available checked run opens automatically. Synthetic samples are explicitly labeled. Details open as a side drawer on desktop and a bottom sheet on phones. Keyboard shortcuts: `N` opens file import, `/` opens search, up/down arrows move between visible issue buttons, and Escape closes a dialog. Left/right arrows switch focused category tabs.
+
+Motion provides staggered page reveals, spring transitions for dialogs and category selection, and expanding-detail transitions. Reduced-motion preferences disable these animations. The prebuilt library is served locally; Node is only needed to rebuild it during development:
+
+```sh
+npm ci
+npm run build:motion
+```
+
+The bundle source is `frontend/motion.js`; dependency licenses are in `settleproof/web/motion-licenses.txt`.
 
 The browser app binds to loopback and is intended for a single local user. Public deployment and access controls remain Phase 4. [Interface references and design decisions](docs/interface-design.md) document the Modern Treasury, Linear, and TailAdmin research; the implemented markup, styles, and illustration are original.
 
