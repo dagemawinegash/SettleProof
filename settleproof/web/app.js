@@ -1,4 +1,5 @@
 import {$, $$, escape, money, date, icon, hydrateIcons, api, toast, showDialog} from './ui.js';
+import {inspectRun, exportRun} from './inspector.js';
 
 const state = {view:'workspace', runs:[], run:null, report:null, selected:null, filter:'all', query:'', poll:null};
 
@@ -43,6 +44,8 @@ document.addEventListener('click', async event => {
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'guide') showDialog('#guide-dialog');
   if (action === 'new') showNewRun();
+  if (action === 'inspector' && state.run) inspectRun(state.run);
+  if (action === 'exports' && state.run?.report_available) exportRun(state.run);
   if (action === 'refresh') {try {await loadHistory();render();} catch(error) {toast(error.message,true);}}
 });
 

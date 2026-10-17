@@ -105,6 +105,39 @@ def create_app(settings=None, *, root=None, service=None):
         service.snapshot(run_id)
         return {'requested':service.cancel(run_id),'message':'Cancellation takes effect at the next safe checkpoint; cleanup follows.'}
 
+    @app.get('/api/runs/{run_id}/attempts')
+    def attempts(run_id:str):
+        run=service.snapshot(run_id)
+        folder=service.path(run_id)
+        result=[]
+        for number in range(1,4):
+            attempt=folder/f'attempt-{number:02}'
+            if not attempt.is_dir():
+                continue
+            source=attempt/'program.py'
+            checker=read_json(attempt/'checker.json',{})
+            result.append({'number':number,'code':source.read_text(encoding='utf-8') if source.is_file() else '',
+                'model':read_json(attempt/'model.json',{}),'execution':read_json(attempt/'execution.json',{}),
+                'checker':checker,'status':'accepted' if checker.get('accepted') else 'rejected' if checker.get('accepted') is False else 'pending'})
+        return {'run_id':run_id,'attempts':result,'replay_verified':run.get('replay_verified',False),
+                'sandbox_id':run.get('sandbox_id'),'sandbox_cleanup':run.get('sandbox_cleanup')}
+
+    @app.get('/api/runs/{run_id}/download/{artifact}')
+    def download(run_id:str,artifact:str):
+        run=service.snapshot(run_id)
+        choices={'report.csv':('report.csv','text/csv'),'report.json':('report.json','application/json'),
+                 'program.py':('program.py','text/plain'),'payments.csv':('inputs/payments.csv','text/csv'),
+                 'bank.csv':('inputs/bank.csv','text/csv')}
+        if artifact not in choices:
+            raise FileNotFoundError()
+        if artifact in ('report.csv','report.json','program.py') and not run['report_available']:
+            raise HTTPException(409,'Only accepted results can be exported')
+        relative,media=choices[artifact]
+        path=service.path(run_id)/relative
+        if not path.is_file():
+            raise FileNotFoundError()
+        return FileResponse(path,media_type=media,filename=run_id+'-'+artifact)
+
     @app.get('/api/samples/{kind}')
     def sample(kind:str):
         if kind not in ('payments','bank'):
