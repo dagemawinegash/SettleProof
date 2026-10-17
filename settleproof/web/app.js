@@ -245,10 +245,27 @@ function ledgerRows() {
 function evidenceView() {
   const item = reportItems().find(item => item.key === state.selected);
   if (!item) return '<div class="empty-state">Choose a payout to inspect its evidence.</div>';
-  return `<div class="evidence-heading"><span class="eyebrow">SOURCE EVIDENCE</span><h2>${escape(item.label)}</h2>${badge(item.status)}</div><div class="evidence-calculation"><div><span>Expected net</span><strong>${money(item.expected_minor)}</strong></div><div><span>Bank records</span><strong>${money(item.bank_minor)}</strong></div><div class="calculation-total"><span>Difference</span><strong>${money(item.difference_minor)}</strong></div></div>`;
+  const explanation = {
+    matched:['The payout matches.','The referenced bank record equals the net amount supported by the payment rows.'],
+    discrepancy:['A difference to investigate.',`The referenced bank record is ${money(Math.abs(item.difference_minor))} ${item.difference_minor < 0 ? 'below' : 'above'} the expected net amount. No extra adjustments were assumed.`],
+    missing_deposit:['No bank record in this export.','The payment activity has a payout reference, but the bank file has no corresponding record. Check settlement timing and export completeness.'],
+    ambiguous:['Several records. One reference.','Multiple bank records carry this payout reference. Split deposits are unsupported, so the group stays ambiguous even if its total balances.'],
+    unmatched_deposit:['A deposit without payment evidence.','This reference appears only in the bank file. Check whether the payment export is complete and uses the same references.'],
+    unreferenced:['This row needs a payout reference.','Equal amounts are not enough to connect records. This row remains unassigned until a supported reference is available.']
+  }[item.status];
+  return `<div class="evidence-heading"><span class="eyebrow">SOURCE EVIDENCE</span><h2>${escape(item.label)}</h2>${badge(item.status)}</div><div class="evidence-reason ${item.status === 'matched' ? 'reason-matched' : ''}"><span class="reason-symbol">${icon(item.status === 'matched' ? 'check' : 'search')}</span><div><strong>${explanation[0]}</strong><p>${escape(explanation[1])}</p></div></div><div class="evidence-calculation"><div><span>Payment activity <small>charges less refunds</small></span><strong>${money(item.gross_minor)}</strong></div><div><span>Documented fees</span><strong>${item.fee_minor ? '−' : ''}${money(item.fee_minor)}</strong></div><div class="expected-total"><span>Expected net payout</span><strong>${money(item.expected_minor)}</strong></div><div><span>Bank deposits <small>${item.bank_rows.length} referenced ${item.bank_rows.length === 1 ? 'record' : 'records'}</small></span><strong>${item.bank_rows.length ? money(item.bank_minor) : '—'}</strong></div><div class="calculation-total ${item.status === 'matched' ? 'matched-total' : ''}"><span>${item.status === 'matched' ? 'Difference · balanced' : 'Difference · investigate'}</span><strong>${money(item.difference_minor)}</strong></div></div><div class="source-evidence"><div class="source-section-title"><span>${icon('file')}Payment records</span><span>${item.evidence.payments.length}</span></div>${item.evidence.payments.length ? item.evidence.payments.map(row => sourceRecord(row,'payments')).join('') : '<p class="no-source">No payment rows carry this reference.</p>'}<div class="source-section-title bank-source-title"><span>${icon('bank')}Bank records</span><span>${item.evidence.bank.length}</span></div>${item.evidence.bank.length ? item.evidence.bank.map(row => sourceRecord(row,'bank')).join('') : '<p class="no-source">No bank row carries this reference.</p>'}</div><div class="evidence-footer">${icon('lock')}Original source values. Expand a record to inspect every field.</div>`;
+}
+
+function sourceRecord(row, kind) {
+  const source = row.source;
+  const identity = source.payment_id || source.transaction_reference || source.deposit_id || source.bank_transaction_id || row.row_id;
+  const label = kind === 'payments' ? 'net' : 'deposit';
+  return `<details class="source-record"><summary><span class="source-row-id">${escape(row.row_id)}</span><span class="source-identity"><strong title="${escape(identity)}">${escape(identity)}</strong><small>CSV record ${row.record}</small></span><span class="source-amount">${money(row.net_minor)}<small>${label}</small></span>${icon('down')}</summary><div class="raw-record">${Object.entries(source).map(([key,value]) => `<div><span>${escape(key)}</span><code>${escape(value) || '<i>empty</i>'}</code></div>`).join('')}</div></details>`;
 }
 
 function updateLedger() {
+  const visible = filteredItems();
+  if (!visible.some(item => item.key === state.selected)) state.selected = visible[0]?.key || null;
   $('#ledger-body').innerHTML = ledgerRows();
   $('#evidence-panel').innerHTML = evidenceView();
   $$('[data-filter]').forEach(button => button.classList.toggle('active',button.dataset.filter === state.filter));
@@ -262,3 +279,12 @@ document.addEventListener('click',event => {
   if (event.target.closest('[data-action="reset-filter"]')) {state.filter = 'all';state.query = '';$('#ledger-search').value = '';updateLedger();}
 });
 document.addEventListener('input',event => {if (event.target.id === 'ledger-search') {state.query = event.target.value;updateLedger();}});
+document.addEventListener('keydown',event => {
+  if (event.key === '/' && !event.target.closest('input,textarea,select,dialog') && $('#ledger-search')) {event.preventDefault();$('#ledger-search').focus();}
+  const row = event.target.closest('[data-select]');
+  if (row && ['ArrowDown','ArrowUp'].includes(event.key)) {
+    event.preventDefault();const items = filteredItems();const index = items.findIndex(item => item.key === row.dataset.select);
+    state.selected = items[Math.max(0,Math.min(items.length-1,index+(event.key === 'ArrowDown' ? 1 : -1)))]?.key;
+    updateLedger();$(`[data-select="${state.selected}"]`)?.focus();
+  }
+});
