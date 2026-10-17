@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from settleproof.agent import Agent, active_run
+from settleproof.agent import Agent, active_run, RunCancelled
 from settleproof.config import Settings
 from settleproof.inputs import Inputs, InputError
 from settleproof.replay import replay_saved
@@ -170,6 +170,16 @@ class AgentTests(unittest.TestCase):
         with active_run(root):
             self.assertTrue((root/'active-run.lock').exists())
         self.assertFalse((root/'active-run.lock').exists())
+
+    def test_cancel_after_execution_stops_before_replay_and_cleans_up(self):
+        agent=self.agent([self.good])
+        agent.cancelled=lambda:self.sandbox.executions>0
+        with self.assertRaises(RunCancelled):
+            agent.run(self.p,self.b,output=self.output)
+        folder=next(self.output.iterdir())
+        self.assertEqual(json.loads((folder/'run.json').read_text())['status'],'cancelled')
+        self.assertFalse((folder/'report.json').exists())
+        self.assertEqual(self.sandbox.deleted,['test-owned-sandbox'])
 
 
 if __name__=='__main__':

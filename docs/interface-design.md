@@ -4,9 +4,9 @@ The product is a local browser application for investigating payout discrepancie
 
 ## References inspected
 
-- [Modern Treasury reconciliation](https://www.moderntreasury.com/journal/manual-reconciliation-for-expected-payments): inspected public workflow documentation and screenshot links. Carry forward a selected financial record next to its related source records. Do not copy adjustment controls: SettleProof cannot edit source amounts to force a match.
-- [Linear's interface refresh](https://linear.app/now/behind-the-latest-design-refresh): inspected its discussion of hierarchy, subdued navigation, softer dividers, and warm neutral colors. Carry forward compact navigation and a dominant working area.
-- [TailAdmin source](https://github.com/TailAdmin/free-react-tailwind-admin-dashboard): inspected AppLayout, BasicTableOne, and Badge implementations. Carry forward responsive layout, overflow handling, aligned tables, and semantic status variants. Implement original markup/styles without importing template assets or code.
+- [Modern Treasury reconciliation](https://www.moderntreasury.com/journal/manual-reconciliation-for-expected-payments): inspected public workflow documentation and downloaded/viewed its record-detail screenshot. Carry forward a selected financial record next to its related source records. Do not copy adjustment controls: SettleProof cannot edit source amounts to force a match.
+- [Linear's interface refresh](https://linear.app/now/behind-the-latest-design-refresh): inspected its discussion of hierarchy, subdued navigation, softer dividers, and warm neutral colors, and downloaded/viewed its comparison screenshot. Carry forward compact navigation and a dominant working area.
+- [TailAdmin source](https://github.com/TailAdmin/free-react-tailwind-admin-dashboard): inspected AppLayout, BasicTableOne, and Badge implementations, and downloaded/viewed its public interface preview. Carry forward responsive layout, overflow handling, aligned tables, and semantic status variants. Implement original markup/styles without importing template assets or code.
 
 Use original CSS and browser JavaScript, served by the existing Python application. A small purpose-built interface avoids a second build/runtime while the trusted backend remains intact.
 

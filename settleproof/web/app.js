@@ -8,6 +8,7 @@ function render() {
   $('#breadcrumb-current').textContent = state.view === 'history' ? 'Run history' : 'Reconciliation';
   $('#history-count').textContent = state.runs.length;
   $('#content').innerHTML = state.view === 'history' ? historyView() : workspaceView();
+  if (state.view === 'workspace' && state.run && !state.report) $('#content').insertAdjacentHTML('beforeend',`<div class="execution-link-row"><button class="text-button" data-action="inspector">${icon('code')}Inspect execution evidence ${icon('arrow')}</button></div>`);
 }
 
 function workspaceView() {
@@ -81,8 +82,13 @@ function uploadStatus(message, type = '') {
 }
 
 async function chooseFile(kind, file) {
+  ++upload.revision;
+  upload[kind] = null;
   upload.valid = false;
   $('#start-run').disabled = true;
+  $('#' + kind + '-name').textContent = 'Choose a CSV file';
+  $('#' + kind + '-hint').textContent = 'or drop it here · up to 256 KB';
+  $(`.dropzone[data-kind="${kind}"]`).classList.remove('has-file');
   if (!file) return;
   if (file.size > 256000) {uploadStatus('Each file must be at most 256,000 bytes.','invalid');return;}
   if (!file.name.toLowerCase().endsWith('.csv')) {uploadStatus('Choose a .csv file for each source.','invalid');return;}
@@ -279,7 +285,7 @@ function updateLedger() {
 
 document.addEventListener('click',event => {
   const selected = event.target.closest('[data-select]');
-  if (selected) {state.selected = selected.dataset.select;updateLedger();}
+  if (selected) {state.selected = selected.dataset.select;updateLedger();if (matchMedia('(max-width:1120px)').matches) $('#evidence-panel').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches ? 'instant' : 'smooth',block:'start'});}
   const filter = event.target.closest('[data-filter]');
   if (filter) {state.filter = filter.dataset.filter;updateLedger();}
   if (event.target.closest('[data-action="reset-filter"]')) {state.filter = 'all';state.query = '';$('#ledger-search').value = '';updateLedger();}
