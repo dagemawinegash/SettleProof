@@ -1,0 +1,7 @@
+deposit_id,payout_id,amount,currency
+dp_001,po_clear,174.00,USD
+dp_002,po_short,140.50,USD
+dp_003,po_split,50.00,USD
+dp_004,po_split,47.00,USD
+dp_005,,40.00,USD
+dp_006,po_unknown,12.00,USD

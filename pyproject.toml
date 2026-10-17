@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "settleproof"
+version = "0.1.0"
+description = "A sandboxed reconciliation coding agent with independent source checks"
+requires-python = ">=3.11"
+dependencies = ["python-dotenv>=1,<2", "psycopg[binary]>=3.2,<4"]
+
+[project.scripts]
+settleproof = "settleproof.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["settleproof*"]
+
+[tool.setuptools.package-data]
+settleproof = ["sandbox_runner.py"]
