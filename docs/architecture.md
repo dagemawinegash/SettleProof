@@ -1,4 +1,4 @@
-# Phase 1 and 2 architecture
+# Architecture
 
 The trusted Python controller reads two small CSVs, validates their explicit USD profile, keeps original bytes, and assigns stable record IDs. River receives the matching contract, headers, and record counts. It writes a complete Python program. Raw source values are omitted from the initial model request; repair requests can contain execution/check feedback.
 
@@ -19,4 +19,16 @@ Postgres stores run metadata and summary via a free Neon resource provisioned th
 - Shared payout references are required for attribution; the system does not infer identity from equal amounts.
 - Supported grouping is one provider payout to one bank record. Several bank records for one provider payout remain ambiguous.
 - Only the documented CSV profile is supported. No live Stripe payment API, automated refunds, or financial writes are performed.
-- No browser UI, deployment, or submission flow is part of these two phases.
+- The local browser app is single-user; deployment and submission remain Phase 4.
+
+## Browser workspace (Phase 3)
+
+`settleproof serve` starts a loopback-only FastAPI server. It serves the original HTML/CSS/JavaScript interface and same-origin JSON/file endpoints. Credentials are loaded only by the server. Host validation, a custom request header for mutations, an Origin check, a restrictive script CSP, no-store API responses, and bounded uploads protect the local boundary. The app is not ready to accept untrusted public users without the separate deployment/access-control work.
+
+The run service accepts one active reconciliation and keeps the event loop free while the existing controller runs in a background thread. The original controller's filesystem lock also prevents overlap with terminal runs. Browser progress comes from actual controller events and saved manifests. Cancellation is cooperative: an in-flight model/remote request can finish before the controller stops at its next stage and cleans up. Unexpected process termination can still leave a stale lock or owned sandbox; auto-pause and recorded sandbox IDs support recovery.
+
+Reports are exposed only for checked completed jobs. Artifact downloads use a fixed allowlist of names; arbitrary paths and configuration files cannot be requested. Generated code is displayed as escaped text and offered as an attachment, never run in the browser or controller. Failed runs retain their real attempt history without exposing an accepted report.
+
+History merges Neon metadata with local manifests. A run stored only in Neon is explicitly marked metadata-only because its original files/code/report remain on the machine that produced it. Completed local results reopen after a fresh server process without a new model call.
+
+The two supported header profiles are explicit semantic mappings, not inferred matches. The trusted reader validates either profile, retaining original headers in source evidence; River receives the mapping and writes the actual adapter code. The checker remains outside the sandbox and validates the same financial constraints for both profiles.

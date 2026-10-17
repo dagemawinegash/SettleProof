@@ -120,4 +120,3 @@ class BrowserApiTests(unittest.TestCase):
         result=self.client.get('/api/runs/'+RID+'/attempts').json()
         self.assertEqual(result['attempts'][0]['status'],'rejected')
         self.assertEqual(result['attempts'][0]['checker']['feedback'],'Fabricated reference')
-

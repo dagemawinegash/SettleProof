@@ -2,7 +2,33 @@
 
 An agent that writes and runs Python to compare payment-provider CSV exports with bank deposits. An independent checker verifies every source reference, amount, and matching claim before accepting its report.
 
-Built for the CreateOS × Stripe Projects hackathon, October 17, 2026. **Phases 1 and 2 provide a terminal coding agent and checked reconciliation.** The browser application and deployment are later phases.
+Built for the CreateOS × Stripe Projects hackathon, October 17, 2026. **Phases 1–3 are implemented: a real coding agent, independent reconciliation checks, and a local browser workspace.** Deployment and submission are Phase 4.
+
+## Browser workspace
+
+From the repository root in WSL:
+
+```sh
+.venv/bin/python -m pip install -e '.[web]'
+.venv/bin/python -m settleproof serve
+```
+
+Open **http://127.0.0.1:8000**. In the existing development workspace the web dependencies are already installed. PowerShell users can run `.\.venv-win\Scripts\python.exe -m settleproof serve` instead. Add `--port 8001` if port 8000 is occupied.
+
+Choose **New reconciliation**, select your two supported CSVs, or **Load samples** for synthetic data. Standard and renamed-column samples are available. Loading samples only validates the files; **Reconcile files** starts real River inference and CreateOS execution.
+
+The workspace provides:
+
+- Actual controller progress, revision feedback, and cancellation at a safe checkpoint.
+- Checked totals and a searchable ledger with needs-review/matched filters.
+- A payout detail panel with exact fee/refund arithmetic and expandable original CSV fields.
+- **Execution evidence** showing actual generated programs, checker decisions, execution status, and token usage.
+- **Export report** downloads for CSV/JSON reports, accepted Python, and the original input files.
+- **Run history** backed by Neon metadata, with local artifact availability shown. Completed runs survive a server restart.
+
+The latest locally available checked run opens automatically. Synthetic samples are explicitly labeled. On smaller screens the evidence panel sits below the ledger; selecting a record scrolls to its evidence. The ledger scrolls horizontally when needed. Keyboard shortcuts: `N` opens file import, `/` focuses search, and arrow keys navigate focused ledger rows.
+
+The browser app binds to loopback and is intended for a single local user. Public deployment and access controls remain Phase 4. [Interface references and design decisions](docs/interface-design.md) document the Modern Treasury, Linear, and TailAdmin research; the implemented markup, styles, and illustration are original.
 
 ## How it works
 
@@ -55,7 +81,7 @@ Configuration names (values stay private): `RIVER_API_KEY`, `CREATEOS_API_KEY`, 
 
 ## Supported input contract
 
-Files are UTF-8 CSV, at most 256,000 bytes and 200 data records each. Column order may change; column names must match exactly with no extras. Currency must be USD throughout. Amounts use plain decimal dollars with at most two fractional digits. Identifiers must be unique within their respective file.
+Files are UTF-8 CSV, at most 256,000 bytes and 200 data records each. Column order may change; column names must match one of the two explicit profiles, with no extras. Currency must be USD throughout. Amounts use plain decimal dollars with at most two fractional digits. Identifiers must be unique within their respective file.
 
 Payments:
 
@@ -75,6 +101,15 @@ dp_1,po_1,96.40,USD
 Payment amounts and fees are nonnegative magnitudes; `refund` supplies a negative sign. Refund fee must be zero. Expected net is signed payment amounts minus documented fees. Bank amounts are signed net amounts. No fees are guessed or subtracted from bank amounts.
 
 All rows sharing a nonempty `payout_id` belong to one group. One bank record can settle that group. Multiple bank records remain ambiguous, including when their sum balances. Blank references remain unassigned; equal amounts alone never establish a match. Missing deposits and unexplained differences need investigation and may reflect settlement timing or incomplete exports.
+
+The **renamed** profile uses the same financial rules with these actual headers:
+
+| Source | Renamed CSV headers |
+| --- | --- |
+| Payments | `transaction_reference,settlement_reference,transaction_type,gross_amount,processing_fee,currency_code` |
+| Bank | `bank_transaction_id,settlement_reference,net_amount,currency_code` |
+
+Each file can use either complete profile independently. The model receives the declared column mapping and generates code that reads the actual headers. Original header names remain in the evidence. See [alternate payment sample](fixtures/alternate/payments.csv) and [alternate bank sample](fixtures/alternate/bank.csv).
 
 These are explicit prototype schemas, not universal adapters for arbitrary bank or Stripe exports. There is no live Stripe payments integration or automatic financial action.
 
@@ -110,10 +145,11 @@ The synthetic demo intentionally contains a matched payout with fees/refund, a $
 ## Verification and limits
 
 ```sh
+.venv/bin/python -m pip install -e '.[web,dev]'
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Tests cover exact matches, refunds/fees, discrepancies, ambiguity, malformed input, currency rejection, fabricated/reused/missing rows, invented adjustments, money precision, revision limits, replay failures, and cleanup. Controlled test doubles exercise failures; they are separate from the live River/CreateOS integration runs.
+The 55 tests cover exact matches, refunds/fees, discrepancies, ambiguity, malformed input, currency rejection, fabricated/reused/missing rows, invented adjustments, money precision, revision limits, replay failures, cancellation, cleanup, alternate CSV profiles, browser API boundaries, downloads, and history recovery. Controlled test doubles exercise failures; they are separate from the live River/CreateOS integration runs. See [Phase 3 validation](docs/phase3-validation.md) for actual browser verification.
 
 The sandbox has disabled ingress, a restrictive nonempty egress allowlist, and bounded execution/output. The controller independently verifies outputs and never executes generated source. Sandbox deletion is attempted on both success and failure; failed cleanup is recorded. One local run may be active at a time. Unexpected process termination can leave a stale `.local/active-run.lock` or an owned sandbox requiring cleanup.
 
