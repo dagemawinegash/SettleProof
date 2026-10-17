@@ -10,6 +10,7 @@ function render() {
 }
 
 function workspaceView() {
+  if (state.run) return progressView();
   return `<div class="page-heading"><div><span class="eyebrow">RECONCILIATION WORKSPACE</span><h1>Your numbers. Their paper trail.</h1><p class="page-description">Bring your payment export and bank deposits together. Follow every difference back to its source.</p></div></div>
   <section class="welcome"><div class="welcome-copy"><span class="pill green">${icon('shield')}Source-checked reconciliation</span><h2>Close the gap.<br>Keep the evidence.</h2><p>An agent writes and runs the comparison. An independent checker verifies the numbers. You see exactly what matches, and what needs another look.</p><button class="button primary" data-action="new">${icon('plus')}Start a reconciliation</button><button class="text-button" data-action="guide">See how it works ${icon('arrow')}</button><div class="welcome-footnote">${icon('lock')}Your files stay in this workspace and its isolated execution sandbox.</div></div><div class="paper-illustration" aria-hidden="true"><div class="paper-shadow"></div><div class="paper-receipt"><div class="receipt-top"><img src="/static/mark.svg" width="23" height="27" alt=""><span>A CLEARER PICTURE</span></div><div class="receipt-line"><i></i><i></i></div><div class="receipt-line"><i></i><i></i></div><div class="receipt-line"><i></i><i></i></div><div class="receipt-total"><span>Every number</span><strong>A source.</strong></div><div class="receipt-seal">${icon('check')}FOLLOW THE PAPER TRAIL</div><div class="receipt-rip"></div></div></div></section><div class="intro-notes"><div><span>01</span><strong>Two files in</strong><p>Payment activity and bank deposits. One currency, clear rules.</p></div><div><span>02</span><strong>Every claim checked</strong><p>Exact amounts, original rows, and a reproducible comparison.</p></div><div><span>03</span><strong>Answers you can inspect</strong><p>Matches, open questions, and the source evidence behind both.</p></div></div>`;
 }
@@ -125,7 +126,54 @@ async function startRun() {
   finally {upload.starting = false;button.disabled = !upload.valid;button.innerHTML = `Reconcile files ${icon('arrow')}`;}
 }
 
-function pollRun(runId) {toast('Reconciliation started. The agent is working in the background.');}
+const stageLabels = {inputs_validated:'Source files validated',generating:'Writing comparison code',creating_sandbox:'Preparing the isolated runtime',sandbox_ready:'CreateOS sandbox ready',executing:'Executing generated Python',revision_needed:'Independent checker requested a revision',checking_replay:'Replaying the checked program',checked:'Report checked against source records',sandbox_deleted:'Sandbox cleanup completed',cleanup_required:'Sandbox cleanup needs attention',failed:'Run stopped',cancelled:'Cancellation accepted',metadata_write_failed:'History could not be saved'};
+const activeStatuses = ['running','cancelling'];
+function progressView() {
+  const run = state.run, active = activeStatuses.includes(run.status), failed = ['failed','interrupted','cancelled'].includes(run.status);
+  const latest = run.events?.at(-1), stage = latest?.stage;
+  const title = run.status === 'cancelling' ? 'Stopping at a safe checkpoint.' : active ? 'Following the paper trail.' : run.status === 'checked' ? 'The comparison is checked.' : run.status === 'cancelled' ? 'This run was cancelled.' : 'This run needs another look.';
+  const subtitle = active ? 'The agent is writing and testing real code. Every accepted result must pass an independent check.' : failed ? 'There is no accepted report for this run. Its execution evidence is preserved.' : 'The generated program and its replay agree with the original sources.';
+  const steps = [{label:'Validate sources',events:['inputs_validated']},{label:'Write & execute',events:['generating','creating_sandbox','sandbox_ready','executing','revision_needed']},{label:'Check & replay',events:['checking_replay','checked']},{label:'Save & clean up',events:['sandbox_deleted']}];
+  let current = steps.findIndex(s => s.events.includes(stage));
+  if (current < 0) current = active ? 1 : failed ? -1 : 3;
+  return `<div class="page-heading"><div><span class="eyebrow">${active ? 'RECONCILIATION IN PROGRESS' : 'EXECUTION RECORD'}</span><h1>${title}</h1><p class="page-description">${subtitle}</p></div>${active ? `<button class="button" data-action="cancel" ${run.status === 'cancelling' ? 'disabled' : ''}>${icon('close')}${run.status === 'cancelling' ? 'Cancellation requested' : 'Cancel run'}</button>` : '<button class="button" data-action="new">Try another run</button>'}</div><div class="run-file-line">${icon('file')}<span>${escape(run.input_names?.payments || 'payments.csv')}</span><span class="muted">+</span>${icon('bank')}<span>${escape(run.input_names?.bank || 'bank.csv')}</span><span class="mono">${escape(run.run_id.slice(-8))}</span></div><section class="panel progress-panel"><div class="progress-heading"><span class="${active ? 'spinner' : 'progress-result'}">${active ? '' : icon(failed ? 'alert' : 'check')}</span><div><h2>${active ? escape(stageLabels[stage] || 'Starting the controller') : run.status === 'checked' ? 'Independent checks passed' : escape(run.status)}</h2><p>${run.status === 'cancelling' ? 'The current model or execution request may finish first. The controller then stops and cleans up.' : active ? 'Live controller events · no simulated progress' : escape(run.error || 'The original files and execution record are preserved.')}</p></div><span class="pill ${failed ? 'amber' : 'green'}">${active ? 'Live run' : escape(run.status)}</span></div><div class="run-steps">${steps.map((step,index) => `<div class="run-step ${index < current || (!active && !failed) ? 'complete' : index === current ? 'current' : ''}"><span>${index < current || (!active && !failed) ? icon('check') : '0'+(index+1)}</span><strong>${step.label}</strong></div>`).join('')}</div><div class="event-list" aria-live="polite">${(run.events || []).map(event => `<div class="event-row ${event.stage === 'revision_needed' ? 'revision' : ''}"><span class="event-dot"></span><time>${new Date(event.time).toLocaleTimeString('en-US',{hour12:false})}</time><span>${escape(stageLabels[event.stage] || event.stage)}${event.attempt ? `<small>Attempt ${event.attempt}</small>` : ''}</span>${event.stage === 'revision_needed' ? `<p>${escape(event.reason)}</p>` : ''}</div>`).join('') || '<div class="empty-state">The controller is accepting this run…</div>'}</div></section><div class="run-bottom-note">${icon('lock')}Generated code runs in CreateOS. API keys remain in the trusted controller.</div>`;
+}
+
+function pollRun(runId) {
+  clearTimeout(state.poll);
+  state.activeRunId = runId;
+  let failures = 0;
+  const tick = async () => {
+    try {
+      const run = await api('/runs/' + encodeURIComponent(runId));
+      failures = 0;
+      if (state.run?.run_id === runId) {
+        state.run = run;
+        if (run.report_available) state.report = await api('/runs/' + encodeURIComponent(runId) + '/report');
+        if (state.view === 'workspace') render();
+      }
+      if (!activeStatuses.includes(run.status)) {
+        state.activeRunId = null;
+        await loadHistory();
+        if (state.view === 'history') render();
+        toast(run.status === 'checked' ? 'Reconciliation checked. Your evidence report is ready.' : run.status === 'cancelled' ? 'Run cancelled.' : 'Run stopped. Review its execution evidence.',run.status === 'failed');
+        return;
+      }
+    } catch(error) {if (++failures === 3) toast('Connection interrupted. The server may still be working; reconnecting…',true);}
+    state.poll = setTimeout(tick,1500);
+  };
+  tick();
+}
+
+async function cancelRun() {
+  if (!state.run) return;
+  try {
+    await api('/runs/'+encodeURIComponent(state.run.run_id)+'/cancel',{method:'POST',body:'{}',headers:{'Content-Type':'application/json'}});
+    state.run.status = 'cancelling';render();
+  } catch(error) {toast(error.message,true);}
+}
+
+document.addEventListener('click',event => {if (event.target.closest('[data-action="cancel"]')) cancelRun();});
 
 document.addEventListener('keydown', event => {
   if (event.key.toLowerCase() === 'n' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.target.closest('input,textarea,select,dialog')) {event.preventDefault();showNewRun();}
