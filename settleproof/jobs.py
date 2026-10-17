@@ -45,6 +45,12 @@ class RunService:
         self.jobs={}
         self.lock=threading.Lock()
         self.active=None
+        self.samples=[]
+        for name in ('demo','alternate'):
+            try:
+                self.samples.append(Inputs.load(self.root/'fixtures'/name/'payments.csv',self.root/'fixtures'/name/'bank.csv').hashes)
+            except (OSError,ValueError):
+                pass
 
     def path(self, run_id):
         if not RUN_ID.fullmatch(run_id):
@@ -108,6 +114,7 @@ class RunService:
         if not active and status in ('starting','generated'):
             status='interrupted'
         return {**manifest,'run_id':run_id,'status':status,'events':events,
+                'data_kind':'synthetic_sample' if manifest.get('source_sha256') in self.samples else 'user_files',
                 'error':manifest.get('error') or (job.error if job else None),
                 'artifacts_available':folder.is_dir(),
                 'report_available':not active and status=='checked' and (folder/'report.json').is_file()}
@@ -133,4 +140,16 @@ class RunService:
         return sorted(result,key=lambda r:r.get('started_at',r['run_id']),reverse=True)
 
     def history(self):
-        return {'runs':self.local_history(),'database':'not_loaded'}
+        local=self.local_history()
+        try:
+            stored=self.metadata.list_recent()
+            database='connected'
+        except RuntimeError:
+            stored=[]
+            database='unavailable'
+        merged={row['run_id']:{**row,'artifacts_available':False,'report_available':False,
+                'data_kind':'synthetic_sample' if row.get('source_sha256') in self.samples else 'user_files'}
+                for row in stored if RUN_ID.fullmatch(row.get('run_id',''))}
+        merged.update({row['run_id']:row for row in local})
+        return {'runs':sorted(merged.values(),key=lambda row:row.get('started_at',''),reverse=True)[:40],
+                'database':database}

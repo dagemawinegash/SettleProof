@@ -29,3 +29,16 @@ class Metadata:
                 return result[0] if result else None
         except psycopg.Error:
             raise RuntimeError('Run metadata read-back failed') from None
+
+    def list_recent(self, limit=40):
+        if not self.url:
+            raise RuntimeError('Run metadata database is not configured')
+        import psycopg
+        try:
+            with psycopg.connect(self.url,connect_timeout=5,sslmode='require') as connection:
+                result=connection.execute('''SELECT metadata FROM settleproof_runs
+                    WHERE run_id LIKE 'sp-%%' ORDER BY started_at DESC LIMIT %s''',
+                    (min(100,max(1,limit)),)).fetchall()
+                return [row[0] for row in result]
+        except psycopg.Error:
+            raise RuntimeError('Run history could not be read from the metadata database') from None
