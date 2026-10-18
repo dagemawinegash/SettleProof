@@ -1,0 +1,17 @@
+.git
+.env
+.env.*
+.projects
+.local
+.venv
+.venv-win
+node_modules
+artifacts
+uploads
+planning
+.agents
+.codex
+.aws
+.claude
+.cursor
+**/__pycache__

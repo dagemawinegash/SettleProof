@@ -1,0 +1,8 @@
+payout_id,status,payment_rows,bank_rows,gross_minor,fee_minor,expected_minor,bank_minor,difference_minor,currency
+po_clear,matched,P000001 P000002 P000003,B000001,18000,600,17400,17400,0,USD
+po_pending,missing_deposit,P000005,,6000,180,5820,0,-5820,USD
+po_short,discrepancy,P000004,B000002,15000,450,14550,14050,-500,USD
+po_split,ambiguous,P000006,B000003 B000004,10000,300,9700,9700,0,USD
+po_unknown,unmatched_deposit,,B000006,0,0,0,1200,1200,USD
+,unreferenced,P000007,,4000,0,4000,0,-4000,USD
+,unreferenced,,B000005,0,0,0,4000,4000,USD
