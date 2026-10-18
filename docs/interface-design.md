@@ -1,6 +1,6 @@
 # Phase 3 interface direction
 
-The product is a local browser application for investigating payout discrepancies. Deployment is Phase 4. Preserve the working Python controller and keep credentials on the server.
+The product is a local browser application for investigating payout discrepancies. Preserve the working Python controller and keep credentials on the server.
 
 ## References inspected
 

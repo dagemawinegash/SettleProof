@@ -19,11 +19,11 @@ Postgres stores run metadata and summary via a free Neon resource provisioned th
 - Shared payout references are required for attribution; the system does not infer identity from equal amounts.
 - Supported grouping is one provider payout to one bank record. Several bank records for one provider payout remain ambiguous.
 - Only the documented CSV profile is supported. No live Stripe payment API, automated refunds, or financial writes are performed.
-- The local browser app is single-user; deployment and submission remain Phase 4.
+- The browser app is intended for a single local user.
 
-## Browser workspace (Phase 3)
+## Browser workspace
 
-`settleproof serve` starts a loopback-only FastAPI server. It serves the original HTML/CSS/JavaScript interface and same-origin JSON/file endpoints. Credentials are loaded only by the server. Host validation, a custom request header for mutations, an Origin check, a restrictive script CSP, no-store API responses, and bounded uploads protect the local boundary. The app is not ready to accept untrusted public users without the separate deployment/access-control work.
+`settleproof serve` starts a loopback-only FastAPI server. It serves the HTML/CSS/JavaScript interface and same-origin JSON/file endpoints. Credentials are loaded only by the server. Host validation, a custom request header for mutations, an Origin check, a restrictive script CSP, no-store API responses, and bounded uploads protect the local boundary.
 
 The run service accepts one active reconciliation and keeps the event loop free while the existing controller runs in a background thread. The original controller's filesystem lock also prevents overlap with terminal runs. Browser progress comes from actual controller events and saved manifests. Cancellation is cooperative: an in-flight model/remote request can finish before the controller stops at its next stage and cleans up. Unexpected process termination can still leave a stale lock or owned sandbox; auto-pause and recorded sandbox IDs support recovery.
 
