@@ -1,6 +1,8 @@
 
 # Local service state, credentials, and coding-tool configuration
-.projects/
+.projects/*
+!.projects/state.json
+!.projects/state.local.json
 *.egg-info/
 .agents/
 .claude/
@@ -31,6 +33,8 @@ coverage/
 uploads/
 artifacts/
 *.log
+
+.createos.json
 
 .projects/cache
 .projects/vault

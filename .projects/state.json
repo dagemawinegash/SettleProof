@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "providers": {
+    "createos": {
+      "name": "createos"
+    },
+    "neon": {
+      "name": "Neon"
+    }
+  },
+  "resources": {
+    "metadata-plan": {
+      "livemode": true,
+      "name": "metadata-plan",
+      "providerName": "Neon",
+      "serviceId": "free"
+    },
+    "run-metadata": {
+      "livemode": true,
+      "name": "run-metadata",
+      "providerName": "Neon",
+      "serviceId": "postgres"
+    }
+  },
+  "environments": {
+    "default": {
+      "output": ".env",
+      "resources": [
+        {
+          "resourceName": "metadata-plan"
+        },
+        {
+          "resourceName": "run-metadata"
+        }
+      ],
+      "variables": [
+        {
+          "variableName": "createos-api-key",
+          "envKey": "CREATEOS_API_KEY"
+        },
+        {
+          "variableName": "river-api-key",
+          "envKey": "RIVER_API_KEY"
+        }
+      ]
+    }
+  },
+  "variables": {
+    "createos-api-key": {
+      "name": "createos-api-key",
+      "backendId": "fprjvar_61Vb1q1Y4cuqamSF016Vaz0IJUSQbuQUUVeSwCPSaDE0"
+    },
+    "river-api-key": {
+      "name": "river-api-key",
+      "backendId": "fprjvar_61Vb1pqyPVoCygwx316Vaz0IJUSQbuQUUVeSwCPSaJw0"
+    }
+  }
+}

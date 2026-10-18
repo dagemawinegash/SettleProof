@@ -1,0 +1,65 @@
+{
+  "version": 4,
+  "project": {
+    "catalog": "prod",
+    "initializedAt": "2026-10-17T17:16:12.705Z",
+    "merchantDisplayName": null,
+    "merchantId": "acct_1URb2vFRgyqyuPR0",
+    "projectId": "project_61VazAjqrqdbb0CMV16Vaz0IJUSQbuQUUVeSwCPSaNVg",
+    "projectName": "build agents hackathon"
+  },
+  "providers": {
+    "createos": {
+      "accountRequestId": "facctrq_61Vb03gdoetQh9BiT16Vaz0IJUSQbuQUUVeSwCPSaRtY",
+      "configuration": {},
+      "linkedAt": "2026-10-17T18:13:00.525Z",
+      "providerId": "prvdr_61V0eGC6sUPXoATb051se",
+      "providerName": "createos",
+      "redirectUrl": null,
+      "requestedAt": "2026-10-17T18:13:00.525Z",
+      "status": "complete"
+    },
+    "neon": {
+      "accountRequestId": "facctrq_61Vb1qEC5unmPtJlx16Vaz0IJUSQbuQUUVeSwCPSaVE0",
+      "configuration": {},
+      "linkedAt": "2026-10-17T20:07:15.322Z",
+      "providerId": "prvdr_61UH8uNXFdoJUJOtT54AC",
+      "providerName": "Neon",
+      "redirectUrl": null,
+      "requestedAt": "2026-10-17T20:07:15.322Z",
+      "status": "complete"
+    }
+  },
+  "resources": {
+    "metadata-plan": {
+      "configuration": {},
+      "createdAt": "2026-10-17T20:07:18.802Z",
+      "lastRevealedAt": "2026-10-17T20:07:20.300Z",
+      "lastStatus": "complete",
+      "livemode": true,
+      "name": "metadata-plan",
+      "providerId": "prvdr_61UH8uNXFdoJUJOtT54AC",
+      "providerName": "Neon",
+      "resourceId": "fres_61Vb1qIYVrgEsx3Sa16Vaz0IJUSQbuQUUVeSwCPSaCCu",
+      "serviceId": "free"
+    },
+    "run-metadata": {
+      "configuration": {},
+      "createdAt": "2026-10-17T20:07:41.395Z",
+      "lastRevealedAt": "2026-10-17T20:07:42.944Z",
+      "lastStatus": "complete",
+      "livemode": true,
+      "name": "run-metadata",
+      "providerId": "prvdr_61UH8uNXFdoJUJOtT54AC",
+      "providerName": "Neon",
+      "resourceId": "fres_61Vb1qfE225TConXK16Vaz0IJUSQbuQUUVeSwCPSaBM0",
+      "serviceId": "postgres"
+    }
+  },
+  "managedProjectVariableEnvKeys": {
+    ".env": [
+      "CREATEOS_API_KEY",
+      "RIVER_API_KEY"
+    ]
+  }
+}
