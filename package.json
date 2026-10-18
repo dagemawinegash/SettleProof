@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:motion": "esbuild frontend/motion.js --bundle --minify --format=esm --outfile=settleproof/web/motion.js --legal-comments=eof"
+    "build:motion": "esbuild scripts/motion-entry.js --bundle --minify --format=esm --outfile=settleproof/web/vendor/motion.js --legal-comments=eof"
   },
   "dependencies": {
     "motion": "14.3.0"

@@ -1,4 +1,4 @@
-import {animate, stagger} from './motion.js';
+import {animate, stagger} from './vendor/motion.js';
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ease = [0.22, 1, 0.36, 1];

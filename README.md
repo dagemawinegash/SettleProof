@@ -38,7 +38,7 @@ The app runs locally for one user. Original files, generated code, and reports s
 4. Independently verify exact amounts, references, and complete row coverage. Failed programs can be revised within a three-attempt limit.
 5. Run an accepted program again and check that both results agree.
 
-Matches require shared payout references. Differences are items to investigate, not proof of lost money. See [input formats](docs/input-format.md) and [architecture](docs/architecture.md) for details and limits.
+Matches require shared payout references. Differences are items to investigate, not proof of lost money. See [input formats](docs/input-format.md) for supported CSVs and matching rules.
 
 ## Command line
 
@@ -56,6 +56,6 @@ pip install -e ".[web,dev]"
 python -m unittest discover -s tests -v
 ```
 
-The interface uses plain JavaScript and CSS with a bundled Motion dependency. To rebuild that bundle, run `npm ci` and `npm run build:motion`.
+The interface lives in `settleproof/web/`, with bundled dependencies in `web/vendor/`. To rebuild Motion from `scripts/motion-entry.js`, run `npm ci` and `npm run build:motion`.
 
 Issues and pull requests are welcome. Include a small synthetic example for reconciliation bugs, and run the tests before submitting a change.

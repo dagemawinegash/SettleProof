@@ -21,4 +21,4 @@ settleproof = "settleproof.cli:main"
 include = ["settleproof*"]
 
 [tool.setuptools.package-data]
-settleproof = ["sandbox_runner.py", "web/*", "web/fonts/*"]
+settleproof = ["sandbox_runner.py", "web/*", "web/vendor/*"]
