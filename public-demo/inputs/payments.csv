@@ -1,8 +1,0 @@
-payment_id,payout_id,kind,amount,fee,currency
-ch_001,po_clear,charge,120.00,3.60,USD
-ch_002,po_clear,charge,80.00,2.40,USD
-re_001,po_clear,refund,20.00,0.00,USD
-ch_003,po_short,charge,150.00,4.50,USD
-ch_004,po_pending,charge,60.00,1.80,USD
-ch_005,po_split,charge,100.00,3.00,USD
-ch_006,,charge,40.00,0.00,USD

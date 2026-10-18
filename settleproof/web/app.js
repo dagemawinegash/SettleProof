@@ -2,7 +2,6 @@ import {$, $$, escape, money, date, icon, hydrateIcons, api, toast, showDialog, 
 import {inspectRun, exportRun} from './inspector.js';
 import {renderReview,renderReviewItems,renderReviewDetail,renderFocusedProgress} from './review-view.js';
 import {enterPage,enterList,moveFilter,animateDisclosure} from './transitions.js';
-import {configureHosting} from './hosted-ui.js';
 
 const state = {view:'workspace', runs:[], run:null, report:null, selected:null, filter:'all', query:'', poll:null, showAllItems:false};
 
@@ -26,7 +25,7 @@ function workspaceView() {
 
 function historyView() {
   const status = run => ({checked:'Checked',failed:'Stopped',cancelled:'Cancelled',interrupted:'Interrupted',running:'In progress',cancelling:'Stopping'}[run.status] || run.status);
-  return `<div class="page-heading"><div><span class="eyebrow">YOUR WORKSPACE</span><h1>Run history</h1><p class="page-description">A record of your reconciliations, with the work behind each result.</p></div><button class="button" data-action="refresh">${icon('replay')}Refresh</button></div><div class="history-storage-note">${icon(state.database === 'connected' ? 'check' : 'alert')}<span>${state.database === 'public_demo' ? 'Showing the public synthetic demonstration. Private runs require owner access.' : state.database === 'connected' ? 'History synced with Neon. Source files and execution artifacts stay in this workspace.' : 'Showing local history. The metadata database is currently unavailable.'}</span></div><section class="panel"><div class="panel-heading"><h2>Recent runs</h2><span class="muted">${state.runs.length} runs</span></div>${state.runs.length ? state.runs.map(run => `<button class="history-row" data-run="${escape(run.run_id)}" ${!run.artifacts_available ? 'disabled title="Only metadata is available. The source artifacts are not on this machine."' : ''}><span class="file-tile">${icon('ledger')}</span><span class="history-file-names"><strong>${escape(run.input_names?.payments || 'payments.csv')} <span class="muted">+</span> ${escape(run.input_names?.bank || 'bank.csv')}</strong><small>${date(run.started_at)} <span class="source-plus">·</span> <span class="mono">${escape(run.run_id.slice(-8))}</span>${run.data_kind === 'synthetic_sample' ? '<span class="sample-badge">Synthetic sample</span>' : ''}</small></span><span class="history-difference">${run.summary ? money(run.summary.difference_minor) : '—'}<small>net difference</small></span><span class="pill ${run.status === 'checked' ? 'green' : run.status === 'failed' ? 'amber' : ''}">${escape(status(run))}</span>${!run.artifacts_available ? '<span class="metadata-only">Metadata only</span>' : icon('chevron')}</button>`).join('') : '<div class="empty-state">Your first reconciliation will appear here.<br><button class="text-button" data-action="new">Start a reconciliation '+icon('arrow')+'</button></div>'}</section>`;
+  return `<div class="page-heading"><div><span class="eyebrow">YOUR WORKSPACE</span><h1>Run history</h1><p class="page-description">A record of your reconciliations, with the work behind each result.</p></div><button class="button" data-action="refresh">${icon('replay')}Refresh</button></div><div class="history-storage-note">${icon(state.database === 'connected' ? 'check' : 'alert')}<span>${state.database === 'connected' ? 'History synced with Neon. Source files and execution artifacts stay in this workspace.' : 'Showing local history. The metadata database is currently unavailable.'}</span></div><section class="panel"><div class="panel-heading"><h2>Recent runs</h2><span class="muted">${state.runs.length} runs</span></div>${state.runs.length ? state.runs.map(run => `<button class="history-row" data-run="${escape(run.run_id)}" ${!run.artifacts_available ? 'disabled title="Only metadata is available. The source artifacts are not on this machine."' : ''}><span class="file-tile">${icon('ledger')}</span><span class="history-file-names"><strong>${escape(run.input_names?.payments || 'payments.csv')} <span class="muted">+</span> ${escape(run.input_names?.bank || 'bank.csv')}</strong><small>${date(run.started_at)} <span class="source-plus">·</span> <span class="mono">${escape(run.run_id.slice(-8))}</span>${run.data_kind === 'synthetic_sample' ? '<span class="sample-badge">Synthetic sample</span>' : ''}</small></span><span class="history-difference">${run.summary ? money(run.summary.difference_minor) : '—'}<small>net difference</small></span><span class="pill ${run.status === 'checked' ? 'green' : run.status === 'failed' ? 'amber' : ''}">${escape(status(run))}</span>${!run.artifacts_available ? '<span class="metadata-only">Metadata only</span>' : icon('chevron')}</button>`).join('') : '<div class="empty-state">Your first reconciliation will appear here.<br><button class="text-button" data-action="new">Start a reconciliation '+icon('arrow')+'</button></div>'}</section>`;
 }
 
 async function loadHistory() {
@@ -197,8 +196,7 @@ document.addEventListener('keydown', event => {
 async function init() {
   hydrateIcons();
   try {
-    const health=await api('/health');
-    configureHosting(health);
+    await api('/health');
     $('#server-dot').classList.add('online');
     $('#server-label').textContent = 'Workspace connected';
     await loadHistory();

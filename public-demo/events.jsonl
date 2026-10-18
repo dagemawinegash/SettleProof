@@ -1,8 +1,0 @@
-{"time": "2026-10-17T23:41:01.052170+00:00", "stage": "inputs_validated", "payments": 7, "bank": 6}
-{"time": "2026-10-17T23:41:01.086368+00:00", "stage": "generating", "attempt": 1}
-{"time": "2026-10-17T23:41:23.665970+00:00", "stage": "creating_sandbox"}
-{"time": "2026-10-17T23:41:27.541665+00:00", "stage": "sandbox_ready", "sandbox_id": "sb-01m563vq717tge5zftwm6xvk97"}
-{"time": "2026-10-17T23:41:27.554481+00:00", "stage": "executing", "attempt": 1}
-{"time": "2026-10-17T23:41:32.301287+00:00", "stage": "checking_replay", "attempt": 1}
-{"time": "2026-10-17T23:41:36.868077+00:00", "stage": "checked", "summary": {"payment_records": 7, "bank_records": 6, "group_counts": {"matched": 1, "missing_deposit": 1, "discrepancy": 1, "ambiguous": 1, "unmatched_deposit": 1}, "unresolved_items": 6, "gross_minor": 53000, "fee_minor": 1530, "expected_minor": 51470, "bank_minor": 46350, "difference_minor": -5120}}
-{"time": "2026-10-17T23:41:37.988087+00:00", "stage": "sandbox_deleted", "sandbox_id": "sb-01m563vq717tge5zftwm6xvk97"}

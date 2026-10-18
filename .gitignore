@@ -34,8 +34,6 @@ uploads/
 artifacts/
 *.log
 
-.createos.json
-
 .projects/cache
 .projects/vault
 .projects/state.test.json
