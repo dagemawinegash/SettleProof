@@ -2,7 +2,7 @@
 
 An agent that writes and runs Python to compare payment-provider CSV exports with bank deposits. An independent checker verifies every source reference, amount, and matching claim before accepting its report.
 
-Built for the CreateOS × Stripe Projects hackathon, October 17, 2026. **Phases 1–3 are implemented: a real coding agent, independent reconciliation checks, and a local browser workspace.** Deployment and submission are Phase 4.
+Built for the CreateOS × Stripe Projects hackathon, October 17, 2026. Includes a real coding agent, independent reconciliation checks, a browser workspace, and a containerized single-owner hosting entry point.
 
 ## Browser workspace
 
@@ -37,7 +37,21 @@ npm run build:motion
 
 The bundle source is `frontend/motion.js`; dependency licenses are in `settleproof/web/motion-licenses.txt`.
 
-The browser app binds to loopback and is intended for a single local user. Public deployment and access controls remain Phase 4. [Interface references and design decisions](docs/interface-design.md) document the Modern Treasury, Linear, and TailAdmin research; the implemented markup, styles, and illustration are original.
+The default browser command binds to loopback for a single local user. The separate hosted entry point adds the public sample and owner access controls described below. [Interface references and design decisions](docs/interface-design.md) document the Modern Treasury, Linear, and TailAdmin research; the implemented markup, styles, and illustration are original.
+
+## Hosted workspace
+
+**Public demo:** [Open SettleProof](https://01m565k4rjaynk2pnnb5pm0gjn-8000.app.sb.createos.sh) · [Watch the live-agent recording](https://cap.so/s/5feskmzdaptx9c7)
+
+The public URL runs the credential-free `settleproof/public_demo_server.py` inside a CreateOS Sandbox. It serves only the reviewed synthetic example and static interface, blocks all writes, and has no model keys, database credentials, private history, or ability to launch executions. Its report, generated Python, and execution/checker evidence come from an actual successful agent run. New comparisons run through the full local app or the authenticated hosting entry point below. The normal CreateOS app-platform build succeeded but returned 503 at runtime; the working public Sandbox viewer is the submission deployment.
+
+`Dockerfile` runs one Uvicorn worker on port 8000 through `settleproof.hosted:create_hosted_app`. Visitors can inspect the real, previously executed synthetic comparison in `public-demo/`, including its generated Python, original records, checks, and downloads. A visible banner identifies it as a recorded public demonstration. This is separate from a new live execution.
+
+Live comparisons and all other run history require the owner's private access code. Authentication uses an HttpOnly, Secure, SameSite cookie; login attempts are bounded. Public users cannot start or cancel paid runs, or retrieve another run's artifacts. This is a single-owner hackathon workspace, not a multi-user financial service.
+
+In addition to the existing model/database variables, hosting requires `SETTLEPROOF_OWNER_CODE` (at least 20 characters). Optional `SETTLEPROOF_ALLOWED_HOSTS` is a comma-separated host allowlist, `SETTLEPROOF_APP_DIR` defaults to `/app`, and `SETTLEPROOF_DATA_DIR` defaults to `/app/runtime`. Use a persistent writable volume there to retain new reports across container replacement. Neon retains metadata, not full reports; the checked public seed is restored from the image on startup.
+
+On CreateOS, select the Dockerfile runtime, enable `hasDockerfile`, set the directory to `.`, and expose port 8000. The current API updates settings with PUT and replaces the settings object; preserve all required settings when changing it. Runtime secrets belong in the selected hosting environment, outside the image and public repository.
 
 ## How it works
 
@@ -158,7 +172,7 @@ The synthetic demo intentionally contains a matched payout with fees/refund, a $
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-The 55 tests cover exact matches, refunds/fees, discrepancies, ambiguity, malformed input, currency rejection, fabricated/reused/missing rows, invented adjustments, money precision, revision limits, replay failures, cancellation, cleanup, alternate CSV profiles, browser API boundaries, downloads, and history recovery. Controlled test doubles exercise failures; they are separate from the live River/CreateOS integration runs. See [Phase 3 validation](docs/phase3-validation.md) for actual browser verification.
+The 59 tests cover exact matches, refunds/fees, discrepancies, ambiguity, malformed input, currency rejection, fabricated/reused/missing rows, invented adjustments, money precision, revision limits, replay failures, cancellation, cleanup, alternate CSV profiles, browser API boundaries, downloads, history recovery, hosted owner authentication, login limits, and public/private artifact boundaries. Controlled test doubles exercise failures; they are separate from the live River/CreateOS integration runs. See [Phase 3 validation](docs/phase3-validation.md) for actual browser verification.
 
 The sandbox has disabled ingress, a restrictive nonempty egress allowlist, and bounded execution/output. The controller independently verifies outputs and never executes generated source. Sandbox deletion is attempted on both success and failure; failed cleanup is recorded. One local run may be active at a time. Unexpected process termination can leave a stale `.local/active-run.lock` or an owned sandbox requiring cleanup.
 
