@@ -15,13 +15,13 @@ from .jobs import RunService, BusyError, read_json
 WEB=Path(__file__).with_name('web')
 
 
-def create_app(settings=None, *, root=None, service=None):
+def create_app(settings=None, *, root=None, service=None, allowed_hosts=None):
     root=Path(root or Path.cwd())
     settings=settings or Settings.load()
     service=service or RunService(settings,root)
     app=FastAPI(title='SettleProof',docs_url=None,redoc_url=None,openapi_url=None)
     app.state.runs=service
-    app.add_middleware(TrustedHostMiddleware,allowed_hosts=['127.0.0.1','localhost','testserver'])
+    app.add_middleware(TrustedHostMiddleware,allowed_hosts=allowed_hosts or ['127.0.0.1','localhost','testserver'])
 
     @app.middleware('http')
     async def boundary(request:Request,call_next):
